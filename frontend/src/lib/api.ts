@@ -54,3 +54,30 @@ export function fileUrl(file: FileReference | null): string | null {
     return null;
   return '/files/' + file.path.split('/').map(encodeURIComponent).join('/');
 }
+
+export async function post<T>(url: string, data: unknown): Promise<T> {
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!response.ok)
+    throw new Error(
+      response.status === 409
+        ? 'Produkt o tej nazwie już istnieje.'
+        : 'Nie udało się zapisać. Spróbuj ponownie.',
+    );
+  return response.json() as Promise<T>;
+}
+
+export async function upload(file: File): Promise<string> {
+  const body = new FormData();
+  body.append('file', file);
+  const response = await fetch('/api/uploads', { method: 'POST', body });
+  if (!response.ok)
+    throw new Error(
+      'Nie udało się przesłać pliku. Sprawdź jego typ i rozmiar.',
+    );
+  const result = (await response.json()) as { upload_id: string };
+  return result.upload_id;
+}
