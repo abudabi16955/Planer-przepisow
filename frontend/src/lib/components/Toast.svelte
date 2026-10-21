@@ -15,6 +15,7 @@
 
 <style>
   div {
+    z-index: 3;
     position: fixed;
     left: 16px;
     right: 16px;
