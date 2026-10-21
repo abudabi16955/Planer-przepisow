@@ -82,7 +82,7 @@ Odrzucone: Next.js/React (cięższe, SSR niepotrzebny), PostgreSQL (dodatkowa us
 |---|---|
 | `GET /api/health` | liveness/readiness (sprawdza zapis w DATA_DIR i połączenie z bazą) |
 | `GET /api/products` · `POST /api/products` | baza produktów; 409 przy duplikacie nazwy |
-| `GET /api/recipes` · `GET /api/recipes/{id}` · `POST /api/recipes` | przepisy (POST: JSON z polami + identyfikatory wcześniej wgranych plików / zadania importu) |
+| `GET /api/recipes` · `GET /api/recipes/{id}` · `POST /api/recipes` · `PUT /api/recipes/{id}` · `DELETE /api/recipes/{id}` | przepisy (POST/PUT: JSON z polami + identyfikatory wcześniej wgranych plików / zadania importu; DELETE usuwa też wpisy planera i pliki) |
 | `POST /api/uploads` (multipart) | wgranie PDF lub zdjęcia → `upload_id`; walidacja typu i rozmiaru |
 | `POST /api/imports` · `GET /api/imports/{id}` | start zadania importu z linku; odpytywanie statusu (co 1 s) |
 | `GET /api/plan?week=YYYY-MM-DD` · `PUT /api/plan/{date}/{slot}` · `DELETE /api/plan/{date}/{slot}` | planer |
@@ -132,7 +132,7 @@ Zasada: każdy PR dodaje lub aktualizuje testy dla zmienianego zachowania. Revie
 | `MAX_VIDEO_MB` / `MAX_PDF_MB` / `MAX_PHOTO_MB` | `300` / `50` / `15` | limity plików |
 | `LOG_LEVEL` | `info` | logi na stdout (K8s) |
 
-Brak sekretów w v1. Gdyby właściciel wybrał hasło aplikacji (SPEC p. 9.1) — `APP_PASSWORD` wyłącznie z env/Secret K8s; `.env` w `.gitignore`, w repo tylko `.env.example`.
+Brak sekretów i brak logowania w v1 (decyzja właściciela, SPEC p. 9.1). Gdyby kiedyś pojawiły się sekrety — wyłącznie z env/Secret K8s; `.env` w `.gitignore`, w repo tylko `.env.example`.
 
 ## 7. Docker i Kubernetes
 

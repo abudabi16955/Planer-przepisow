@@ -20,9 +20,10 @@ Aplikacja webowa (PWA, mobile-first) dla jednego gospodarstwa domowego:
 4. **lista zakupów** generowana z planera dla wybranych dni, z odhaczaniem kupionych pozycji;
 5. **baza produktów** (własna) z jednostkami i opcjonalnymi wartościami odżywczymi.
 
-Poza zakresem (nie ma w prototypie — wymaga zgody właściciela): konta i logowanie, wielu użytkowników,
-edycja i usuwanie przepisów, nawigacja między tygodniami, automatyczne parsowanie składników z opisu posta,
-integracja z Open Food Facts. Część z nich jest w **pytaniach otwartych (p. 9)**.
+Poza zakresem: konta i logowanie (decyzja właściciela: brak logowania), wielu użytkowników,
+automatyczne parsowanie składników z opisu posta, integracja z Open Food Facts.
+Uzupełnienia spoza prototypu zaakceptowane przez właściciela (2026-10-21): edycja i usuwanie przepisów,
+nawigacja między tygodniami w planerze, zapis opisu posta — szczegóły w p. 9.
 
 ## 2. Nawigacja i układ
 
@@ -208,9 +209,9 @@ Jeden rekord: `kcal`, `protein`, `carbs`, `fat` (liczby ≥ 0; 0 = brak celu).
 | Brak miejsca na dysku / błąd zapisu pliku | Błąd „Nie udało się zapisać pliku.”; przepis nie jest zapisywany częściowo. |
 | Brak sieci (PWA) | Powłoka się ładuje, akcje kończą się komunikatem „Brak połączenia z serwerem.” |
 
-## 9. Pytania otwarte do właściciela
+## 9. Decyzje właściciela (2026-10-21)
 
-1. **Dostęp / logowanie** — prototyp nie ma logowania. Propozycja: aplikacja bez kont (jedno gospodarstwo), dostęp chroniony na poziomie Kubernetes (Ingress z basic-auth / VPN), poza aplikacją. Alternatywa: jedno hasło z zmiennej środowiskowej. Która opcja?
-2. **Edycja i usuwanie przepisów** — w prototypie nie ma. Propozycja: dodać minimalnie „Edytuj” (ten sam formularz) i „Usuń” (z potwierdzeniem) w szczegółach przepisu. Zgoda?
-3. **Kolejny tydzień w planerze** — prototyp pokazuje jeden tydzień. Propozycja: strzałki ‹ › przy zakresie dat (np. planowanie przyszłego tygodnia w niedzielę). Zgoda, czy na razie tylko bieżący tydzień?
-4. **Opis posta** — prototyp tylko go wyświetla przy pobieraniu. Propozycja: zapisać go i pokazać w zakładce „Źródło” pod kartą oryginału, bez automatycznego parsowania składników. Zgoda?
+1. **Bez logowania.** Aplikacja nie ma kont ani hasła; jedno gospodarstwo. Ewentualna ochrona dostępu to sprawa infrastruktury (Ingress/VPN), poza aplikacją.
+2. **Edycja i usuwanie przepisów — tak.** W szczegółach przepisu przyciski „Edytuj” (ten sam formularz co „Dodaj przepis”, wypełniony danymi; zapis → toast „Przepis zapisany”) i „Usuń” (potwierdzenie „Usunąć przepis? Zniknie też z planera.”; usuwa wpisy planera i pliki przepisu; toast „Przepis usunięty”). Plik źródłowy (wideo/PDF) przy edycji można podmienić tylko przez nowy import/upload.
+3. **Nawigacja między tygodniami — tak.** Strzałki ‹ › przy zakresie dat w planerze (telefon i laptop) i na liście zakupów; „Dziś”/plakietka tylko w bieżącym tygodniu; domyślnie bieżący tydzień. Lista zakupów dotyczy tygodnia wybranego w planerze; preset „Od dziś” aktywny tylko w bieżącym tygodniu.
+4. **Opis posta — zapisujemy.** Pokazywany w zakładce „Źródło” pod kartą „Oryginalny post” jako zwykły tekst (escapowany), nagłówek „Opis z posta”. Bez automatycznego parsowania składników.
