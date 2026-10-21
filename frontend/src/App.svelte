@@ -1,20 +1,52 @@
-<main>
-  <h1>Planer przepisów</h1>
-</main>
+<script lang="ts">
+  import { onMount } from 'svelte';
+  import Navigation from './lib/components/Navigation.svelte';
+  import Toast from './lib/components/Toast.svelte';
+  import { route, type Page } from './lib/router';
+
+  let desktop = $state(false);
+  const headings: Record<Page, string> = {
+    recipes: 'Przepisy',
+    recipe: 'Przepis',
+    add: 'Dodaj przepis',
+    planner: 'Planer',
+    shopping: 'Lista zakupów',
+  };
+  onMount(() => {
+    const media = window.matchMedia('(min-width: 1024px)');
+    const update = () => {
+      desktop = media.matches;
+    };
+    update();
+    media.addEventListener('change', update);
+    return () => media.removeEventListener('change', update);
+  });
+</script>
+
+<div class="shell" class:desktop>
+  <Navigation {desktop} page={$route.page} />
+  <main class:detail={$route.page === 'recipe'}>
+    <h1>{headings[$route.page]}</h1>
+  </main>
+  <Toast />
+</div>
 
 <style>
-  :global(body) {
-    margin: 0;
-    background: #f3f5f0;
-    color: #14201a;
-    font-family: 'DM Sans', system-ui, sans-serif;
+  .shell {
+    min-height: 100dvh;
+  }
+  .desktop {
+    display: flex;
   }
   main {
-    padding: 24px;
+    flex: 1;
+    min-width: 0;
+    padding: 24px 16px 104px;
   }
-  h1 {
-    font-family: 'Bricolage Grotesque', system-ui, sans-serif;
-    font-size: 32px;
-    line-height: 1.1;
+  main.detail {
+    padding-bottom: 28px;
+  }
+  .desktop main {
+    padding: 32px;
   }
 </style>
