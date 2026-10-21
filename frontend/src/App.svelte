@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import RecipePage from './screens/RecipePage.svelte';
   import Recipes from './screens/Recipes.svelte';
+  import RecipeForm from './lib/components/RecipeForm.svelte';
   import Navigation from './lib/components/Navigation.svelte';
   import Toast from './lib/components/Toast.svelte';
   import { route, type Page } from './lib/router';
@@ -30,6 +31,7 @@
   <main
     class:detail={$route.page === 'recipe'}
     class:recipes={$route.page === 'recipes' ||
+      $route.page === 'add' ||
       (desktop && $route.page === 'recipe')}
   >
     {#if $route.page === 'recipes' || (desktop && $route.page === 'recipe')}
@@ -39,6 +41,8 @@
       />
     {:else if $route.page === 'recipe' && $route.id}
       {#key $route.id}<RecipePage id={$route.id} {desktop} />{/key}
+    {:else if $route.page === 'add'}
+      <RecipeForm />
     {:else}
       <h1>{headings[$route.page]}</h1>
     {/if}
