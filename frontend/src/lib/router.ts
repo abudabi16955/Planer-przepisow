@@ -1,9 +1,12 @@
 import { readable } from 'svelte/store';
 
-export type Page = 'recipes' | 'recipe' | 'add' | 'planner' | 'shopping';
+export type Page =
+  'recipes' | 'recipe' | 'add' | 'edit' | 'planner' | 'shopping';
 export type Route = { page: Page; id?: string };
 
 export function resolveRoute(path: string): Route {
+  const edit = /^\/przepis\/([^/]+)\/edytuj\/?$/.exec(path);
+  if (edit) return { page: 'edit', id: edit[1] };
   const recipe = /^\/przepis\/([^/]+)\/?$/.exec(path);
   if (recipe) return { page: 'recipe', id: recipe[1] };
   const pages: Record<string, Page> = {

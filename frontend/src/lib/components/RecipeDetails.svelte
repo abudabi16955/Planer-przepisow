@@ -1,7 +1,13 @@
 <script lang="ts">
   import { untrack } from 'svelte';
   import { SvelteSet } from 'svelte/reactivity';
-  import { fileUrl, type Recipe, type CatalogueProduct } from '../api';
+  import {
+    deleteRecipe,
+    fileUrl,
+    type Recipe,
+    type CatalogueProduct,
+  } from '../api';
+  import { showToast } from '../toast';
   import { formatDate, formatFileSize, formatNumber } from '../domain/format';
   import { recipeNutrition, energyProportions } from '../domain/nutrition';
   import { clampServings, formatScaledQuantity } from '../domain/scale';
@@ -13,16 +19,70 @@
     recipe,
     products,
     desktop = false,
+    onDeleted = () => {},
   }: {
     recipe: Recipe;
     products: readonly CatalogueProduct[];
     desktop?: boolean;
+    onDeleted?: (id: string) => void;
   } = $props();
   const uid = $props.id();
   let servings = $state(untrack(() => clampServings(recipe.servings)));
   const checked = new SvelteSet<number>();
   let tab = $state('ingredients');
   let failedImage = $state<string | null>(null);
+  let confirming = $state(false);
+  let deleting = $state(false);
+  let deleteError = $state('');
+  function focusConfirmation(node: HTMLElement) {
+    const previous = document.activeElement as HTMLElement | null;
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    node.querySelector<HTMLButtonElement>('button')?.focus();
+    const keydown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !deleting) confirming = false;
+      if (event.key !== 'Tab') return;
+      const buttons = [
+        ...node.querySelectorAll<HTMLButtonElement>('button:not(:disabled)'),
+      ];
+      const first = buttons[0],
+        last = buttons[buttons.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last?.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first?.focus();
+      } else if (!buttons.length) event.preventDefault();
+    };
+    node.addEventListener('keydown', keydown);
+    return {
+      destroy() {
+        document.body.style.overflow = overflow;
+        node.removeEventListener('keydown', keydown);
+        previous?.focus();
+      },
+    };
+  }
+  async function remove() {
+    if (deleting) return;
+    deleting = true;
+    deleteError = '';
+    try {
+      await deleteRecipe(recipe.id);
+      confirming = false;
+      onDeleted(recipe.id);
+      showToast('Przepis usunięty');
+      navigate('/');
+    } catch (reason) {
+      deleteError =
+        reason instanceof TypeError
+          ? 'Brak połączenia z serwerem.'
+          : 'Nie udało się usunąć przepisu. Spróbuj ponownie.';
+    } finally {
+      deleting = false;
+    }
+  }
   const tabs = [
     ['ingredients', 'Składniki'],
     ['steps', 'Przygotowanie'],
@@ -184,8 +244,16 @@
       >{recipe.title}</svelte:element
     >
     <div class="actions">
-      <button disabled>Edytuj</button><button class="delete" disabled
-        >Usuń</button
+      <button
+        type="button"
+        onclick={() => navigate(`/przepis/${recipe.id}/edytuj`)}>Edytuj</button
+      ><button
+        type="button"
+        class="delete"
+        onclick={() => {
+          deleteError = '';
+          confirming = true;
+        }}>Usuń</button
       >
     </div>
     <section class="macro" aria-label="Wartości na 1 porcję">
@@ -415,7 +483,80 @@
   </div>
 </article>
 
+{#if confirming}
+  <div class="confirm-overlay">
+    <div
+      class="confirmation"
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby={`${uid}-delete-title`}
+      tabindex="-1"
+      use:focusConfirmation
+    >
+      <h2 id={`${uid}-delete-title`}>Usunąć przepis? Zniknie też z planera.</h2>
+      {#if deleteError}<p role="alert">{deleteError}</p>{/if}
+      <div class="confirm-actions">
+        <button
+          type="button"
+          disabled={deleting}
+          onclick={() => (confirming = false)}>Anuluj</button
+        >
+        <button
+          type="button"
+          class="danger"
+          disabled={deleting}
+          onclick={remove}>{deleting ? 'Usuwanie…' : 'Usuń'}</button
+        >
+      </div>
+    </div>
+  </div>
+{/if}
+
 <style>
+  .confirm-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 10;
+    background: #0008;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+  .confirmation {
+    width: 100%;
+    max-width: 440px;
+    background: var(--white);
+    border-radius: 24px;
+    padding: 24px;
+  }
+  .confirmation h2 {
+    font-family: var(--font-heading);
+    font-size: 24px;
+    margin: 0 0 24px;
+  }
+  .confirmation [role='alert'] {
+    color: var(--warning);
+  }
+  .confirm-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+  }
+  .confirm-actions button {
+    padding: 12px 20px;
+    min-height: 44px;
+    border-radius: 12px;
+    background: var(--gray);
+  }
+  .confirm-actions .danger {
+    background: var(--warning);
+    color: var(--white);
+  }
+  .confirm-actions button:disabled {
+    background: var(--disabled);
+    color: var(--muted);
+  }
   .hero {
     position: relative;
     height: 250px;

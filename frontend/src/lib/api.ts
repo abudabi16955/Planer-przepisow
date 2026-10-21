@@ -61,9 +61,13 @@ export function fileUrl(file: FileReference | null): string | null {
   return '/files/' + file.path.split('/').map(encodeURIComponent).join('/');
 }
 
-export async function post<T>(url: string, data: unknown): Promise<T> {
+export async function post<T>(
+  url: string,
+  data: unknown,
+  method: 'POST' | 'PUT' = 'POST',
+): Promise<T> {
   const response = await fetch(url, {
-    method: 'POST',
+    method,
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
@@ -89,3 +93,14 @@ export async function upload(file: File): Promise<string> {
 }
 export const getRecipe = (id: string, signal?: AbortSignal) =>
   get<Recipe>(`/api/recipes/${encodeURIComponent(id)}`, signal);
+
+export const updateRecipe = (id: string, data: unknown) =>
+  post<Recipe>(`/api/recipes/${encodeURIComponent(id)}`, data, 'PUT');
+
+export async function deleteRecipe(id: string): Promise<void> {
+  const response = await fetch(`/api/recipes/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok)
+    throw new Error('Nie udało się usunąć przepisu. Spróbuj ponownie.');
+}

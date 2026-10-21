@@ -139,6 +139,10 @@
             recipe={selected}
             {products}
             desktop={true}
+            onDeleted={(id) => {
+              recipes = recipes.filter((recipe) => recipe.id !== id);
+              selectedId = null;
+            }}
           />{/key}
       {:else if recipeId && !loading && !error}
         <div class="missing">
