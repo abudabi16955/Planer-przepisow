@@ -9,8 +9,8 @@ Zasada nadrzędna: **proste rozwiązania ponad modne** — mało zależności, j
 | Warstwa | Wybór | Dlaczego |
 |---|---|---|
 | Backend | **Python 3.12+ / FastAPI**, Uvicorn | yt-dlp to biblioteka Pythona — import działa w tym samym venv bez drugiego języka; FastAPI daje walidację (Pydantic) i OpenAPI bez dodatkowej pracy. |
-| Baza danych | **SQLite** (moduł `sqlite3` ze stdlib), tryb WAL | Jedno gospodarstwo, mały ruch → żadnego serwera bazy. Plik w wolumenie, kopia zapasowa = kopia pliku. Bez ORM: kilka tabel, czytelne SQL. |
-| Migracje | numerowane pliki `migrations/NNN_opis.sql` + tabela `schema_version`, uruchamiane przy starcie | Bez Alembica — wystarczy kilkadziesiąt linii kodu. |
+| Baza danych | **PostgreSQL 18+**, sterownik **psycopg 3** (z pulą `psycopg_pool`) | Decyzja właściciela (2026-10-21). Standard w Kubernetes, kopie zapasowe `pg_dump`, transakcje i współbieżność bez ograniczeń SQLite. Bez ORM: kilka tabel, czytelne SQL z parametrami. |
+| Migracje | numerowane pliki `migrations/NNN_opis.sql` + tabela `schema_version`, uruchamiane przy starcie w jednej transakcji pod `pg_advisory_lock` (bezpieczne przy kilku podach) | Bez Alembica — wystarczy kilkadziesiąt linii kodu. |
 | Frontend | **Svelte 5 + Vite**, TypeScript, SPA | Mały bundle (ważne na telefonie), prosty model komponentów, mało zależności. Budowany do plików statycznych serwowanych przez FastAPI → jedna usługa, jeden kontener. |
 | Routing | własny mini-router (History API, ~50 linii) | 5 tras; biblioteka zbędna. |
 | Style | zwykły CSS (custom properties z palety prototypu), bez frameworka CSS | Prototyp ma gotowe style inline — przenosimy je 1:1 do komponentów. |
@@ -20,9 +20,9 @@ Zasada nadrzędna: **proste rozwiązania ponad modne** — mało zależności, j
 | Testy | pytest (backend), Vitest + @testing-library/svelte (frontend), Playwright (e2e, tylko CI) | Patrz p. 5. |
 | Lint/format | ruff (Python), ESLint + eslint-plugin-svelte + Prettier, `svelte-check` (typy) | Szybkie, standardowe. |
 | CI | GitHub Actions | Wymóg. |
-| Wdrożenie | Docker (multi-stage) → Kubernetes (Deployment z 1 repliką + PVC) | SQLite = jeden zapisujący proces → 1 replika, strategia `Recreate`. |
+| Wdrożenie | Docker (multi-stage) → Kubernetes (Deployment aplikacji + PostgreSQL + PVC na pliki) | Aplikacja bezstanowa poza katalogiem plików; baza jako osobna usługa. |
 
-Odrzucone: Next.js/React (cięższe, SSR niepotrzebny), PostgreSQL (dodatkowa usługa bez potrzeby), Celery/Redis (kolejka w procesie wystarcza), ORM (zbędna warstwa), Tailwind (prototyp ma gotowe style).
+Odrzucone: Next.js/React (cięższe, SSR niepotrzebny), Celery/Redis (kolejka w procesie wystarcza), ORM (zbędna warstwa), Tailwind (prototyp ma gotowe style).
 
 ## 2. Struktura katalogów
 
@@ -33,7 +33,7 @@ Odrzucone: Next.js/React (cięższe, SSR niepotrzebny), PostgreSQL (dodatkowa us
 │   ├── app/
 │   │   ├── main.py               # tworzenie FastAPI, montowanie static + SPA fallback
 │   │   ├── config.py             # Settings z env (p. 6)
-│   │   ├── db.py                 # połączenie SQLite, migracje
+│   │   ├── db.py                 # pula połączeń PostgreSQL, migracje
 │   │   ├── migrations/           # 001_init.sql, 002_seed_products.sql, ...
 │   │   ├── models.py             # schematy Pydantic (wejście/wyjście API)
 │   │   ├── routers/              # products.py, recipes.py, plan.py, goals.py, shopping.py, files.py, imports.py
@@ -113,7 +113,7 @@ Wymagania z SOUL: osobny, wymienny moduł; jego awaria nie psuje reszty; tylko p
 |---|---|---|---|
 | Jednostkowe — domena | Vitest | skalowanie, makro, lista zakupów, formatowanie, odmiana, tydzień — przypadki z SPEC p. 4, 6, 8 (np. 0,5 szt. → 1 szt., różne jednostki = osobne wiersze) | lokalnie + CI |
 | Komponenty | Vitest + @testing-library/svelte (jsdom) | stany przycisków (np. „Zapisz przepis” nieaktywny przed pobraniem), puste stany, teksty | lokalnie + CI |
-| API | pytest + `httpx`/TestClient, SQLite w katalogu tymczasowym | CRUD, walidacja, upload (sygnatura PDF, limity), Range dla wideo, migracje od zera | lokalnie + CI |
+| API | pytest + `httpx`/TestClient, prawdziwy PostgreSQL 18 (osobna baza testowa tworzona na sesję, każdy test w transakcji wycofywanej na końcu) | CRUD, walidacja, upload (sygnatura PDF, limity), Range dla wideo, migracje od zera | lokalnie + CI |
 | Import | pytest z `fake` importerem + test podprocesu z atrapą skryptu | kody błędów, timeout, sprzątanie plików, odporność na awarię | lokalnie + CI |
 | E2E | Playwright (Chromium), viewport 390×844 i 1440×900 | 4 ścieżki: dodaj przepis ręcznie → zaplanuj → lista zakupów; dodaj produkt; zmień cel; filtr i wyszukiwanie | **tylko CI** (lokalnie przeglądarki Playwrighta wymagają pakietów systemowych, których na VM nie instalujemy) |
 | Lint/typy | ruff check + ruff format --check, ESLint, Prettier --check, svelte-check | cały kod | lokalnie + CI |
@@ -124,7 +124,9 @@ Zasada: każdy PR dodaje lub aktualizuje testy dla zmienianego zachowania. Revie
 
 | Zmienna | Domyślnie | Opis |
 |---|---|---|
-| `DATA_DIR` | `/data` (lokalnie `./data`) | jedyny katalog z danymi: `app.db` + `files/{videos,pdfs,photos,thumbs,tmp}` → montowany jako wolumen |
+| `DATA_DIR` | `/data` (lokalnie `./data`) | jedyny katalog z plikami użytkownika: `files/{videos,pdfs,photos,thumbs,tmp}` → montowany jako wolumen |
+| `DATABASE_URL` | lokalnie `postgresql://planer@localhost:5433/planer` | połączenie z PostgreSQL; na K8s z Secret (zawiera hasło) |
+| `DB_POOL_SIZE` | `5` | rozmiar puli połączeń |
 | `PORT` | `8000` | port HTTP |
 | `TZ` / `APP_TIMEZONE` | `Europe/Warsaw` | „dziś” i granice tygodnia |
 | `IMPORT_BACKEND` | `ytdlp` | `ytdlp` / `disabled` / `fake` |
@@ -132,33 +134,33 @@ Zasada: każdy PR dodaje lub aktualizuje testy dla zmienianego zachowania. Revie
 | `MAX_VIDEO_MB` / `MAX_PDF_MB` / `MAX_PHOTO_MB` | `300` / `50` / `15` | limity plików |
 | `LOG_LEVEL` | `info` | logi na stdout (K8s) |
 
-Brak sekretów i brak logowania w v1 (decyzja właściciela, SPEC p. 9.1). Gdyby kiedyś pojawiły się sekrety — wyłącznie z env/Secret K8s; `.env` w `.gitignore`, w repo tylko `.env.example`.
+Brak logowania w v1 (decyzja właściciela, SPEC p. 9.1). Jedyny sekret to hasło bazy w `DATABASE_URL` — wyłącznie z env/Secret K8s; `.env` w `.gitignore`, w repo tylko `.env.example` bez haseł.
 
 ## 7. Docker i Kubernetes
 
 - **Dockerfile multi-stage**: (1) `node:24-slim` buduje frontend → `dist/`; (2) `python:3.12-slim` + `apt-get install ffmpeg` (w obrazie, nie na VM), venv z zależnościami (w tym yt-dlp), kopiuje `dist/` jako statyczne pliki; użytkownik nie-root (UID 10001), `HEALTHCHECK` na `/api/health`, `VOLUME /data`.
-- **K8s** (`deploy/k8s/`, przykładowe): Deployment 1 replika, `strategy: Recreate` (SQLite), PVC na `/data`, ConfigMap ze zmiennymi, liveness/readiness `/api/health`, `securityContext: runAsNonRoot, readOnlyRootFilesystem` (zapisy tylko do `/data` i `/tmp` jako emptyDir). Ingress poza zakresem repo (zależny od klastra).
-- **Lokalnie na VM**: Docker nie jest zainstalowany — rozwój przez `make dev` (uvicorn + vite dev z proxy `/api`). Budowanie obrazu sprawdza CI (`docker build` w GitHub Actions); nie instalujemy Dockera na VM.
+- **K8s** (`deploy/k8s/`, przykładowe): Deployment aplikacji — 1 replika (kolejka importu działa w procesie, a PVC na pliki to zwykle ReadWriteOnce; więcej replik wymagałoby wolumenu RWX i przeniesienia kolejki do bazy — nie w v1), `strategy: Recreate`, PVC na `/data`, Secret z `DATABASE_URL`, ConfigMap ze zmiennymi, liveness/readiness `/api/health`, `securityContext: runAsNonRoot, readOnlyRootFilesystem` (zapisy tylko do `/data` i `/tmp` jako emptyDir). Ingress poza zakresem repo (zależny od klastra). **PostgreSQL**: w repo przykładowy StatefulSet `postgres:18` z własnym PVC (wystarczy dla jednego domu); jeśli w klastrze jest operator (np. CloudNativePG) lub baza zarządzana — aplikacja potrzebuje tylko `DATABASE_URL`. Kopie zapasowe: CronJob z `pg_dump` (przykład w `deploy/k8s/`).
+- **Lokalnie na VM**: Docker nie jest zainstalowany — rozwój przez `make dev` (uvicorn + vite dev z proxy `/api`). PostgreSQL lokalnie: binaria z pakietu systemowego `postgresql-18` (instaluje właściciel), a klaster deweloperski uruchamiany **bez roota** przez `initdb`/`pg_ctl` w katalogu projektu (`.pgdata/`, w `.gitignore`, port 5433, tylko localhost) — `make db-up` / `make db-down`. Budowanie obrazu sprawdza CI (`docker build` w GitHub Actions); nie instalujemy Dockera na VM.
 
 ## 8. CI (GitHub Actions)
 
 Jeden workflow `.github/workflows/ci.yml`, uruchamiany na każdym PR i push do `main`. Jeden zbiorczy check o stałej nazwie **`ci`** (job agregujący), żeby właściciel mógł dodać go jako wymagany w ochronie `main`:
 
-1. `backend` — setup-python, `pip install -e backend[dev]`, `ruff check`, `ruff format --check`, `pytest`;
+1. `backend` — kontener usługi `postgres:18` (services w GitHub Actions), setup-python, `pip install -e backend[dev]`, `ruff check`, `ruff format --check`, `pytest`;
 2. `frontend` — setup-node, `npm ci`, `npm run lint`, `npm run check` (svelte-check), `npm test`, `npm run build`;
-3. `e2e` — po (2): Playwright z `--with-deps` na runnerze GitHuba, uruchamia zbudowaną aplikację z `IMPORT_BACKEND=fake`;
+3. `e2e` — po (2): Playwright z `--with-deps` na runnerze GitHuba, kontener `postgres:18`, uruchamia zbudowaną aplikację z `IMPORT_BACKEND=fake`;
 4. `docker` — `docker build` (bez publikacji obrazu; rejestr i publikacja do decyzji później);
 5. `ci` — `needs: [backend, frontend, e2e, docker]`, zielony tylko gdy wszystkie są zielone.
 
 ## 9. Lokalne środowisko na VM (stan sprawdzony 2026-10-21)
 
-Dostępne: Python 3.14, Node 24, npm 11, ffmpeg 8, git, gh (zalogowany). Brak: Docker, uv (niepotrzebne — używamy `python -m venv` i pip).
+Dostępne: Python 3.14, Node 24, npm 11, ffmpeg 8, git, gh (zalogowany). Brak: Docker, uv (niepotrzebne — używamy `python -m venv` i pip), **PostgreSQL** (pakiet `postgresql-18` 18.6 dostępny w apt — do zainstalowania przez właściciela, bo nie używamy sudo).
 Venv projektu: `backend/.venv` (w `.gitignore`); yt-dlp instalowany tylko tam. Zależności frontendu w `frontend/node_modules`. Nic nie instalujemy systemowo i nie używamy sudo.
 
 ## 10. Decyzje (ADR w skrócie)
 
 1. **Jedna usługa (FastAPI serwuje SPA)** — zamiast osobnego serwera frontendu: prostsze wdrożenie i brak CORS.
-2. **SQLite + 1 replika** — wystarcza dla jednego gospodarstwa; skalowanie poziome nie jest wymaganiem. Zmiana na Postgres możliwa później (SQL bez specyficznych rozszerzeń).
+2. **PostgreSQL 18+ (decyzja właściciela)** — zamiast SQLite: standardowa baza w Kubernetes, kopie `pg_dump`, brak problemów z blokadą pliku na wolumenie sieciowym. Koszt: druga usługa i lokalny klaster deweloperski. Bez ORM i bez rozszerzeń poza standardowymi (`citext` niepotrzebny — unikalność nazw przez indeks na `lower(name)`).
 3. **Obliczenia na froncie, czyste funkcje** — natychmiastowa reakcja UI (licznik porcji, filtry), łatwe testy; backend przechowuje dane źródłowe, nie wyniki.
 4. **Import przez podproces + kolejka w procesie** — izolacja awarii bez dodatkowych usług.
 5. **Ręczny service worker i router** — mniej zależności niż Workbox / svelte-routing, a zakres jest mały.
