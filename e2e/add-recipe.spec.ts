@@ -28,7 +28,7 @@ for (const newProduct of [false, true]) {
     const recipe = await response.json();
     try {
       await expect(page).toHaveURL(`/przepis/${recipe.id}`);
-      await expect(page.getByRole('status')).toHaveText('Przepis zapisany');
+      await expect(page.getByRole('status').filter({hasText: 'Przepis zapisany'})).toHaveText('Przepis zapisany');
       await expect(page.getByRole('heading', {name: title, exact: true})).toBeVisible();
       await page.getByRole('tab', {name: 'Przygotowanie', exact: true}).click();
       await expect(page.getByText('Ugotuj', {exact: true})).toBeVisible();
