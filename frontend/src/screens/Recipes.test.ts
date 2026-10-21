@@ -201,3 +201,53 @@ test('anuluje żądania po opuszczeniu ekranu', async () => {
   view.unmount();
   await waitFor(() => expect(signal?.aborted).toBe(true));
 });
+
+test('pełny panel resetuje porcje i odhaczenia przy przełączeniu przepisu', async () => {
+  await load(true);
+  const panel = screen.getByRole('complementary');
+  await fireEvent.click(
+    within(panel).getByRole('button', { name: 'Więcej porcji' }),
+  );
+  const ingredient = within(panel).getByRole('button', {
+    name: 'Produkt, 300 g',
+  });
+  await fireEvent.click(ingredient);
+  expect(ingredient.getAttribute('aria-pressed')).toBe('true');
+  await fireEvent.click(
+    screen.getByRole('button', { name: 'Pokaż przepis: Zupa pomidorowa' }),
+  );
+  await fireEvent.click(
+    screen.getByRole('button', { name: 'Pokaż przepis: Kurczak teriyaki' }),
+  );
+  expect(within(panel).getByLabelText('Liczba porcji').textContent).toBe('2');
+  expect(
+    within(panel)
+      .getByRole('button', { name: 'Produkt, 200 g' })
+      .getAttribute('aria-pressed'),
+  ).toBe('false');
+});
+
+test('bezpośredni adres wybiera wskazany przepis w panelu laptopa', async () => {
+  render(Recipes, { desktop: true, recipeId: 'supper' });
+  const panel = screen.getByRole('complementary');
+  expect(
+    await within(panel).findByRole('heading', { name: 'Sałatka z fasolą' }),
+  ).toBeTruthy();
+  expect(
+    screen
+      .getByRole('button', { name: 'Pokaż przepis: Sałatka z fasolą' })
+      .getAttribute('aria-pressed'),
+  ).toBe('true');
+});
+
+test('nieznane ID nie pokazuje przypadkowego przepisu w panelu', async () => {
+  render(Recipes, { desktop: true, recipeId: 'missing' });
+  const panel = screen.getByRole('complementary');
+  expect(await within(panel).findByRole('alert')).toHaveProperty(
+    'textContent',
+    'Przepis nie istnieje.',
+  );
+  expect(
+    within(panel).queryByRole('heading', { name: 'Kurczak teriyaki' }),
+  ).toBeNull();
+});

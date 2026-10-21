@@ -31,12 +31,18 @@ export interface CatalogueProduct extends Product {
   created_at: string;
 }
 
+export class ApiError extends Error {
+  constructor(public status: number) {
+    super('Brak połączenia z serwerem.');
+  }
+}
+
 async function get<T>(url: string, signal?: AbortSignal): Promise<T> {
   const response = await fetch(url, {
     signal,
     headers: { Accept: 'application/json' },
   });
-  if (!response.ok) throw new Error('Brak połączenia z serwerem.');
+  if (!response.ok) throw new ApiError(response.status);
   return response.json() as Promise<T>;
 }
 
@@ -81,3 +87,5 @@ export async function upload(file: File): Promise<string> {
   const result = (await response.json()) as { upload_id: string };
   return result.upload_id;
 }
+export const getRecipe = (id: string, signal?: AbortSignal) =>
+  get<Recipe>(`/api/recipes/${encodeURIComponent(id)}`, signal);

@@ -29,6 +29,10 @@ for (const newProduct of [false, true]) {
     try {
       await expect(page).toHaveURL(`/przepis/${recipe.id}`);
       await expect(page.getByRole('status')).toHaveText('Przepis zapisany');
+      await expect(page.getByRole('heading', {name: title, exact: true})).toBeVisible();
+      await page.getByRole('tab', {name: 'Przygotowanie', exact: true}).click();
+      await expect(page.getByText('Ugotuj', {exact: true})).toBeVisible();
+      await page.getByRole('tab', {name: 'Składniki', exact: true}).click();
       const saved = await request.get(`/api/recipes/${recipe.id}`);
       expect(await saved.json()).toMatchObject({ title, servings: 3, steps: ['Ugotuj', 'Podaj'], source_type: 'manual' });
       expect(recipe.ingredients.length).toBe(newProduct ? 1 : 0);

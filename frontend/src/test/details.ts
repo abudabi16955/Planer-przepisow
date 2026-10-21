@@ -1,0 +1,56 @@
+import type { CatalogueProduct, Recipe } from '../lib/api';
+
+export const products: CatalogueProduct[] = [
+  {
+    id: '11111111-1111-4111-8111-111111111111',
+    name: 'Mąka pszenna',
+    units: ['g', 'szklanka'],
+    nutrition_basis: 'g',
+    kcal: 364,
+    protein: 10.3,
+    carbs: 76.3,
+    fat: 1,
+    unit_conversions: { szklanka: 150 },
+    is_custom: false,
+    created_at: '2026-10-01T10:00:00Z',
+  },
+  {
+    id: '22222222-2222-4222-8222-222222222222',
+    name: 'Sól',
+    units: ['g'],
+    nutrition_basis: 'g',
+    kcal: 0,
+    protein: 0,
+    carbs: 0,
+    fat: 0,
+    unit_conversions: {},
+    is_custom: false,
+    created_at: '2026-10-01T10:00:00Z',
+  },
+];
+
+export const detailRecipe: Recipe = {
+  id: '33333333-3333-4333-8333-333333333333',
+  title: 'Domowe placki',
+  category: 'obiad',
+  time_min: 25,
+  servings: 2,
+  source_type: 'manual',
+  source_platform: null,
+  source_url: null,
+  source_description: null,
+  photo: null,
+  pdf: null,
+  video: null,
+  kcal: 330,
+  protein: 10,
+  carbs: 20,
+  fat: 5,
+  steps: ['Wymieszaj składniki.', 'Usmaż placki.'],
+  ingredients: [
+    { product_id: products[0].id, quantity: 100, unit: 'g' },
+    { product_id: products[1].id, quantity: null, unit: '' },
+  ],
+  created_at: '2026-10-03T10:00:00Z',
+  updated_at: '2026-10-03T10:00:00Z',
+};
