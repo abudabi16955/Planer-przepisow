@@ -12,6 +12,7 @@ from starlette.exceptions import HTTPException
 
 from app.config import Settings
 from app.db import migrate
+from app.routers.products import router as products_router
 
 
 class SPAFiles(StaticFiles):
@@ -63,6 +64,8 @@ def create_app(settings: Settings | None = None, static_dir: Path | None = None)
             "import_enabled": settings.import_backend == "fake"
             or (settings.import_backend == "ytdlp" and find_spec("yt_dlp") is not None)
         }
+
+    app.include_router(products_router)
 
     static_dir = static_dir or Path("frontend/dist").resolve()
     if static_dir.is_dir():
