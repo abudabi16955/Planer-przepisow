@@ -38,7 +38,7 @@ test('powłoka nawigacji działa na telefonie i laptopie', async ({ page }, test
 test('zmiana szerokości przełącza układ przy 1024 px', async ({ page }) => {
   await page.goto('/planer');
   await page.setViewportSize({ width: 1023, height: 900 });
-  await expect(page.getByRole('button', { name: 'Lista zakupów' })).toHaveCount(0);
+  await expect(page.getByRole('navigation', {name:'Nawigacja'}).getByRole('button', { name: 'Lista zakupów' })).toHaveCount(0);
   await page.setViewportSize({ width: 1024, height: 900 });
-  await expect(page.getByRole('button', { name: 'Lista zakupów' })).toBeVisible();
+  await expect(page.getByRole('navigation', {name:'Nawigacja'}).getByRole('button', { name: 'Lista zakupów' })).toBeVisible();
 });

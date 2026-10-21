@@ -128,3 +128,33 @@ test.each([
     screen.getByRole('button', { name: label }).getAttribute('aria-current'),
   ).toBe('page');
 });
+
+test('query tygodnia zmienia Planer i wraca po popstate', async () => {
+  window.history.replaceState(null, '', '/planer?week=2026-12-28');
+  render(App);
+  expect(
+    await screen.findByText(
+      '28 grudnia 2026 – 3 stycznia 2027 · 0 z 21 posiłków',
+    ),
+  ).toBeTruthy();
+  await fireEvent.click(
+    screen.getByRole('button', { name: 'Następny tydzień' }),
+  );
+  expect(
+    await screen.findByText('4–10 stycznia · 0 z 21 posiłków'),
+  ).toBeTruthy();
+  window.history.replaceState(null, '', '/planer?week=2026-12-28');
+  window.dispatchEvent(new PopStateEvent('popstate'));
+  expect(
+    await screen.findByText(
+      '28 grudnia 2026 – 3 stycznia 2027 · 0 z 21 posiłków',
+    ),
+  ).toBeTruthy();
+});
+
+test('adres zakupów zachowuje parametr tygodnia', () => {
+  expect(resolveRoute('/zakupy?week=2026-12-28')).toEqual({
+    page: 'shopping',
+    week: '2026-12-28',
+  });
+});
