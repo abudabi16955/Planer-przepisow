@@ -8,6 +8,14 @@ let media: MediaQueryList;
 let changes: Set<() => void>;
 
 beforeEach(() => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) => ({
+      ok: !url.startsWith('/api/recipes/'),
+      status: 404,
+      json: async () => [],
+    })),
+  );
   window.history.replaceState(null, '', '/');
   changes = new Set();
   media = {
