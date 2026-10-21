@@ -33,8 +33,10 @@
     'szczypta',
   ];
   const labels = ['kcal', 'Białko g', 'Węgle g', 'Tłuszcz g'];
-  const number = (value: string) =>
-    value.trim() === '' ? null : Number(value.replace(',', '.'));
+  const number = (value: string): number | null => {
+    const parsed = value.trim() ? Number(value.replace(',', '.')) : NaN;
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+  };
   const matches = $derived(
     products
       .filter((p) =>
@@ -48,11 +50,6 @@
     products.some(
       (p) =>
         p.name.toLocaleLowerCase('pl') === name.trim().toLocaleLowerCase('pl'),
-    ),
-  );
-  const validValues = $derived(
-    values.every(
-      (v) => !v.trim() || (Number.isFinite(number(v)) && number(v)! >= 0),
     ),
   );
   const canAdd = $derived(
@@ -129,15 +126,14 @@
     expanded = false;
   }
   async function saveProduct() {
-    if (!name.trim() || duplicate || !units.length || !validValues || pending)
-      return;
+    if (!name.trim() || duplicate || !units.length || pending) return;
     pending = true;
     error = '';
     try {
       const product = await post<CatalogueProduct>('/api/products', {
         name: name.trim(),
         units,
-        nutrition_basis: values.some((v) => v.trim()) ? basis : null,
+        nutrition_basis: values.some((v) => number(v) !== null) ? basis : null,
         kcal: number(values[0]),
         protein: number(values[1]),
         carbs: number(values[2]),
@@ -301,11 +297,7 @@
       <button
         type="button"
         class="primary"
-        disabled={pending ||
-          !name.trim() ||
-          duplicate ||
-          !units.length ||
-          !validValues}
+        disabled={pending || !name.trim() || duplicate || !units.length}
         onclick={saveProduct}>Zapisz produkt</button
       >
     </div>

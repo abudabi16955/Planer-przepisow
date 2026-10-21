@@ -228,3 +228,31 @@ test('konflikt nazwy z serwera zachowuje formularz produktu', async () => {
   ).toBe('Sumak');
   expect(disabled('Zapisz produkt')).toBe(false);
 });
+
+test('wartości ujemne i nienumeryczne są puste; zero pozostaje wartością', async () => {
+  const onSave = vi.fn(async () => recipes[3]);
+  render(RecipeForm, { initialRecipe: recipes[3], onSave });
+  await fireEvent.input(screen.getByLabelText('kcal'), {
+    target: { value: '-20' },
+  });
+  await fireEvent.input(screen.getByLabelText('Białko g'), {
+    target: { value: 'abc' },
+  });
+  await fireEvent.input(screen.getByLabelText('Węgle g'), {
+    target: { value: '0' },
+  });
+  await fireEvent.input(screen.getByLabelText('Czas (min)'), {
+    target: { value: '-1' },
+  });
+  await fireEvent.click(screen.getByRole('button', { name: 'Zapisz przepis' }));
+  await waitFor(() =>
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kcal: null,
+        protein: null,
+        carbs: 0,
+        time_min: null,
+      }),
+    ),
+  );
+});

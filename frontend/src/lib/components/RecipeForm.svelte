@@ -48,17 +48,17 @@
   let photo = $state<File | null>(null);
   let pending = $state(false);
   let error = $state('');
-  const number = (value: string) =>
-    value.trim() ? Number(value.replace(',', '.')) : null;
+  const number = (value: string): number | null => {
+    const parsed = value.trim() ? Number(value.replace(',', '.')) : NaN;
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+  };
   const valid = $derived(
     title.trim() &&
       Number.isInteger(number(servings)) &&
       number(servings)! >= 1 &&
       number(servings)! <= 50 &&
-      (!time.trim() || (Number.isInteger(number(time)) && number(time)! > 0)) &&
-      values.every(
-        (v) => !v.trim() || (Number.isFinite(number(v)) && number(v)! >= 0),
-      ) &&
+      (number(time) === null ||
+        (Number.isInteger(number(time)) && number(time)! > 0)) &&
       (source === 'manual' ||
         (source === 'pdf' && (pdf || initialRecipe?.pdf))),
   );
