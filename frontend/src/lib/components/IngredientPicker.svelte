@@ -202,14 +202,10 @@
             activeIndex + (event.key === 'ArrowDown' ? 1 : -1),
           ),
         );
-      } else if (
-        event.key === 'Enter' &&
-        expanded &&
-        activeIndex >= 0 &&
-        matches[activeIndex]
-      ) {
+      } else if (event.key === 'Enter' && expanded) {
         event.preventDefault();
-        choose(matches[activeIndex]);
+        const match = matches[Math.max(0, activeIndex)];
+        if (match) choose(match);
       }
     }}
   />

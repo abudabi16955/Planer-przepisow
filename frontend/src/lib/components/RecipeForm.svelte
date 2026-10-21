@@ -44,6 +44,7 @@
     ),
   );
   let pdf = $state<File | null>(null);
+  let pdfInput: HTMLInputElement | undefined = $state();
   let photo = $state<File | null>(null);
   let pending = $state(false);
   let error = $state('');
@@ -165,6 +166,7 @@
           >Wybierz plik PDF<input
             type="file"
             accept="application/pdf,.pdf"
+            bind:this={pdfInput}
             onchange={(event) => (pdf = event.currentTarget.files?.[0] ?? null)}
           /></label
         >{#if pdf}<p>
@@ -172,7 +174,10 @@
             <button
               type="button"
               aria-label="Usuń plik"
-              onclick={() => (pdf = null)}>×</button
+              onclick={() => {
+                pdf = null;
+                if (pdfInput) pdfInput.value = '';
+              }}>×</button
             >
           </p>{/if}{/if}
     </section>
@@ -206,6 +211,7 @@
         >Porcje<input
           inputmode="numeric"
           bind:value={servings}
+          placeholder="2"
           required
         /></label
       >
