@@ -22,6 +22,8 @@ beforeEach(() => {
     'fetch',
     vi.fn(async (url: string, options?: RequestInit) => {
       if (url === '/api/recipes') return Response.json(recipes);
+      if (url === '/api/goal')
+        return Response.json({ kcal: 2000, protein: 100, carbs: 250, fat: 65 });
       if (url === '/api/products') return Response.json(products);
       if (url.startsWith('/api/plan?')) return Response.json(plan);
       const [, date, slot] = /\/api\/plan\/([^/]+)\/(\d)/.exec(url)!;
