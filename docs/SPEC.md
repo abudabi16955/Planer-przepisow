@@ -138,7 +138,7 @@ Adresy (URL) ekranów: `/` (przepisy), `/przepis/:id`, `/dodaj`, `/planer`, `/za
 ## 5. Model danych (logiczny)
 
 ### 5.1 Produkt
-`id`, `name` (unikalna, bez wielkości liter), `units[]` (uporządkowane, pierwsza domyślna; dozwolone: g, kg, ml, l, szt., łyżeczka, łyżka, szklanka, szczypta, ząbek, puszka), `nutrition_basis` (g | ml | szt. | brak), `kcal`, `protein`, `carbs`, `fat` (na 100 g / 100 ml / 1 szt., opcjonalne), `is_custom`, `created_at`.
+`id`, `name` (unikalna, bez wielkości liter), `units[]` (uporządkowane, pierwsza domyślna; dozwolone: g, kg, ml, l, szt., łyżeczka, łyżka, szklanka, szczypta, ząbek, puszka), `nutrition_basis` (g | ml | szt. | brak), `kcal`, `protein`, `carbs`, `fat` (na 100 g / 100 ml / 1 szt., opcjonalne), `unit_conversions` (opcjonalna mapa: jednostka → ile to jednostek podstawy, np. Pomidor na 100 g: `{"szt.": 150}`, Mąka: `{"szklanka": 160, "łyżka": 10}`, Czosnek: `{"ząbek": 5}`; wypełniana w bazie startowej, formularz nowego produktu jej nie ma — jak w prototypie), `is_custom`, `created_at`.
 Startowa baza: 29 produktów z `catalog()` prototypu (T:889) + wartości odżywcze z publicznych tabel (do przygotowania przez Researchera, zatwierdzane przeze mnie).
 
 ### 5.2 Przepis
@@ -163,7 +163,7 @@ Jeden rekord: `kcal`, `protein`, `carbs`, `fat` (liczby ≥ 0; 0 = brak celu).
 
 1. **Wartości na porcję przepisu**:
    a) jeśli użytkownik wpisał makro (białko/węgle/tłuszcz) — używamy ich; kcal = wpisane kcal, a gdy puste: 4·B + 4·W + 9·T;
-   b) jeśli nic nie wpisał — liczymy z produktów: Σ(wartość produktu × ilość w podstawie) / porcje. Przeliczenia na podstawę: g←kg (×1000), ml←l (×1000), dla produktów „na 100 ml” także łyżka = 15 ml, łyżeczka = 5 ml, szklanka = 250 ml; „szt.” tylko z „szt.”. Składnik w jednostce niezamienialnej, „do smaku” lub produkt bez wartości — pomijany;
+   b) jeśli nic nie wpisał — liczymy z produktów: Σ(wartość produktu × ilość w podstawie) / porcje. Przeliczenia na podstawę, w kolejności: (1) jednostka = jednostka podstawy; (2) g←kg, ml←l (×1000); (3) `unit_conversions` produktu; (4) dla produktów „na 100 ml” standardowe miary: łyżka = 15 ml, łyżeczka = 5 ml, szklanka = 250 ml. Składnik w jednostce bez przelicznika, „do smaku” lub produkt bez wartości — pomijany;
    c) brak jakichkolwiek danych → przepis „bez wartości” (wyświetlamy „—” zamiast kcal, pasek makro pusty, w linii karty tylko „25 min”).
 2. **Proporcje energii**: B% = round(4B/E·100), W% = round(4W/E·100), T% = 100 − B% − W%, gdzie E = 4B + 4W + 9T.
 3. **Skalowanie porcji**: ilość × porcje / porcje bazowe; zakres licznika 1–12.
