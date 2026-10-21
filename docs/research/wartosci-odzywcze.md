@@ -1,136 +1,428 @@
-# Rozpoznanie techniczne: Wartości odżywcze dla 29 produktów bazowych (seed)
+# Rozpoznanie techniczne: Wartości odżywcze i przeliczniki dla 29 produktów bazy (seed)
 
 - **Issue:** [#12](https://github.com/abudabi16955/Planer-przepisow/issues/12) (Etap 1: Researcher)
 - **Status:** Gotowe do zatwierdzenia / Etap 2 (Developer)
 - **Data:** 2026-10-21
 - **Autor:** Researcher — Planer przepisów
-- **Kontekst:** `design/telefon.dc.html` (T:889 `catalog()`), `docs/SPEC.md` (p. 5.1, 6.1), `docs/ARCHITECTURE.md` (p. 10.7)
+- **Kontekst:** `design/telefon.dc.html` (T:889 `catalog()`), `docs/SPEC.md` (p. 5.1, 6.1 — po aktualizacji z PR #15), `docs/ARCHITECTURE.md` (p. 10.7)
 
 ---
 
 ## 1. Cel i zasady doboru danych
 
-Celem rozpoznania jest przygotowanie referencyjnych danych makroskładników (energia kcal, białko, węglowodany, tłuszcze) dla 29 produktów startowych z prototypu aplikacji.
+Celem rozpoznania jest przygotowanie referencyjnych danych makroskładników (energia kcal, białko, węglowodany, tłuszcze) oraz mapy przeliczników jednostek (`unit_conversions`) dla 29 produktów startowych z prototypu aplikacji.
 
-### Reguły przyjęte zgodnie ze specyfikacją (`docs/SPEC.md` p. 5.1 i 6.1):
-1. **Podstawa wartości (`nutrition_basis`):** dopuszczalne w modelu to wyłącznie:
-   - `na 100 g` (dla produktów stałych/sypkich, gdzie domyślną jednostką jest `g`),
-   - `na 100 ml` (dla płynów, gdzie domyślną jednostką jest `ml`),
-   - `na 1 szt.` (dla produktów policzalnych, gdzie domyślną jednostką jest `szt.` lub `ząbek`).
-2. **Dopasowanie do jednostki domyślnej:** Podstawa została dobrana ściśle do pierwszej (domyślnej) jednostki na liście dozwolonych jednostek produktu w `catalog()`:
-   - Jajka, owoce i warzywa z domyślnym `szt.` $\rightarrow$ **na 1 szt.**
-   - Płyny (woda, mleko, oleje, sos sojowy, śmietanka) $\rightarrow$ **na 100 ml**
-   - Produkty sypkie, mięso, sery, bakalie $\rightarrow$ **na 100 g**
-3. **Stan produktów:** Zgodnie z wytycznymi produkty ujęto w **stanie surowym** (nieprzetworzonym):
-   - Ryż jaśminowy i makaron penne — **suche** (przed ugotowaniem),
+### Reguły przyjęte zgodnie ze specyfikacją (`docs/SPEC.md` p. 5.1 i 6.1 oraz decyzją z PR #15):
+1. **Podstawa wartości (`basis` / `nutrition_basis`):**
+   - **na 100 g** (`g`) — dla produktów stałych i sypkich (w tym warzyw i owoców, mięsa, serów, bakalii),
+   - **na 100 ml** (`ml`) — dla płynów (woda, mleko, oleje, sos sojowy, śmietanka),
+   - **na 1 szt.** (`szt.`) — wyłącznie dla Jajek (standardowa porcja kulinarna).
+2. **Przeliczniki jednostek nietrywialnych (`unit_conversions`):**
+   - Aplikacja automatycznie przelicza jednostki wagowe i objętościowe w systemie metrycznym: `g ↔ kg (×1000)` oraz `ml ↔ l (×1000)`.
+   - Dla **wszystkich pozostałych jednostek** występujących w katalogu produktu (`szt.`, `ząbek`, `puszka`, `szklanka`, `łyżka`, `łyżeczka`, `szczypta`), w tabeli produktów definiujemy mapę przeliczenia: `jednostka → ile to jednostek podstawy` (g dla podstawy `g`, ml dla podstawy `ml`).
+3. **Stan produktów:**
+   - Produkty sypkie (ryż jaśminowy, makaron penne) ujęto w **stanie suchym / surowym** (przed ugotowaniem),
    - Mięso (pierś z kurczaka) — **surowe, bez skóry i kości**,
-   - Warzywa i owoce — **surowe, świeże, część jadalna**.
+   - Warzywa i owoce — **świeże, surowe, część jadalna** (przeliczniki `szt.` uwzględniają wagę części jadalnej po odliczeniu standardowego odpadu).
 4. **Źródła danych:**
-   - **USDA FoodData Central** (bazy SR Legacy Foods oraz Foundation Foods) — oficjalna amerykańska baza laboratoryjna Departamentu Rolnictwa USA,
-   - **Tabele składu i wartości odżywczej żywności** (PZWL / Instytut Żywności i Żywienia — IŻŻ / Narodowe Centrum Edukacji Żywieniowej — NCEZ) oraz oficjalne specyfikacje handlowe dla produktów specyficznych dla rynku polskiego (np. śmietanka 18%).
+   - **USDA FoodData Central** (SR Legacy Foods oraz Foundation Foods),
+   - **Tabele składu i wartości odżywczej żywności PZWL / IŻŻ / NCEZ** (Instytut Żywności i Żywienia / Narodowe Centrum Edukacji Żywieniowej) oraz normy handlowe i etykiety producentów w Polsce.
 
 ---
 
-## 2. Tabela wartości odżywczych (29 produktów)
+## 2. Tabela wartości odżywczych i przeliczników (29 produktów)
 
 > **Oznaczenia w uwagach:**
-> - `[SPRAWDZONE]` — wartość pochodzi bezpośrednio z analiz laboratoryjnych źródła dla danej jednostki/masy.
-> - `[SZACUNEK]` — masa jednostki (1 szt., 1 ząbka, 1 puszki) lub przeliczenie gęstości przyjęte na podstawie standardów handlowych i kulinarnych (IŻŻ / PN-EN / etykiety).
+> - `[SPRAWDZONE]` — wartość odżywcza lub standaryzowana objętość (np. szklanka 250 ml, łyżka 15 ml) pochodzi bezpośrednio z danych laboratoryjnych / normatywnych.
+> - `[SZACUNEK]` — masa jednostki kulinarnej (1 szt. warzywa/owocu, 1 ząbek czosnku, waga odsączonej puszki, gęstość nasypowa produktów sypkich) przyjęta na podstawie standardów IŻŻ, wagi rynkowej lub etykiet.
 
-| Lp. | Produkt | Podstawa | kcal | Białko (g) | Węglowodany (g) | Tłuszcze (g) | Źródło (link) | Uwagi |
-|:---:|:---|:---:|:---:|:---:|:---:|:---:|:---|:---|
-| 1 | **Jajka** | na 1 szt. | 72 | 6.3 | 0.4 | 4.8 | [USDA FDC #171287](https://fdc.nal.usda.gov/food-details/171287/nutrients) | `[SPRAWDZONE]` 143 kcal/100 g; `[SZACUNEK]` przyjęto 1 szt. = 50 g części jadalnej (standardowe jajko klasy M o masie całkowitej 55–60 g). |
-| 2 | **Mleko 2%** | na 100 ml | 50 | 3.4 | 4.8 | 2.0 | [USDA FDC #2705386](https://fdc.nal.usda.gov/food-details/2705386/nutrients) / IŻŻ | `[SPRAWDZONE]` Wartość dla 100 ml mleka pasteryzowanego/UHT 2% tłuszczu (gęstość ok. 1.03 g/ml). |
-| 3 | **Woda** | na 100 ml | 0 | 0.0 | 0.0 | 0.0 | [USDA FDC #174620](https://fdc.nal.usda.gov/food-details/174620/nutrients) | `[SPRAWDZONE]` Czysta woda kranowa/butelkowana; 0 kcal i makroskładników. |
-| 4 | **Płatki owsiane** | na 100 g | 379 | 13.2 | 67.7 | 6.5 | [USDA FDC #173904](https://fdc.nal.usda.gov/food-details/173904/nutrients) | `[SPRAWDZONE]` Płatki zwykłe/górskie suche. `[SZACUNEK]` miar: 1 szklanka ≈ 100 g (379 kcal), 1 łyżka ≈ 10 g (38 kcal). |
-| 5 | **Mąka pszenna** | na 100 g | 364 | 10.3 | 76.3 | 1.0 | [USDA FDC #168936](https://fdc.nal.usda.gov/food-details/168936/nutrients) | `[SPRAWDZONE]` Mąka pszenna uniwersalna (odpowiednik polskiego typu 500). `[SZACUNEK]` miar: 1 szklanka ≈ 150 g, 1 łyżka ≈ 15 g. |
-| 6 | **Cukier** | na 100 g | 387 | 0.0 | 100.0 | 0.0 | [USDA FDC #169655](https://fdc.nal.usda.gov/food-details/169655/nutrients) | `[SPRAWDZONE]` Cukier biały (sacharoza, 99.98% W). W polskich tabelach IŻŻ często zaokrąglane do 400 kcal (4 kcal/g). `[SZACUNEK]` miar: 1 łyżka ≈ 12 g, 1 łyżeczka ≈ 5 g. |
-| 7 | **Sól** | na 100 g | 0 | 0.0 | 0.0 | 0.0 | [USDA FDC #173468](https://fdc.nal.usda.gov/food-details/173468/nutrients) | `[SPRAWDZONE]` Sól kuchenna (NaCl, sód 38.8 g/100 g); 0 kcal i makroskładników. |
-| 8 | **Cynamon** | na 100 g | 247 | 4.0 | 80.6 | 1.2 | [USDA FDC #171320](https://fdc.nal.usda.gov/food-details/171320/nutrients) | `[SPRAWDZONE]` Cynamon mielony. `[SZACUNEK]` miar: 1 łyżeczka ≈ 3 g (7.4 kcal). |
-| 9 | **Papryka wędzona** | na 100 g | 282 | 14.1 | 54.0 | 12.9 | [USDA FDC #171329](https://fdc.nal.usda.gov/food-details/171329/nutrients) | `[SPRAWDZONE]` Mielona słodka/wędzona papryka (przyprawa). `[SZACUNEK]` miar: 1 łyżeczka ≈ 3 g (8.5 kcal). |
-| 10 | **Oliwa z oliwek** | na 100 ml | 828 | 0.0 | 0.0 | 92.0 | [USDA FDC #171413](https://fdc.nal.usda.gov/food-details/171413/nutrients) / [NCEZ](https://ncez.pzh.gov.pl) | `[SPRAWDZONE]` 884 kcal i 100 g T na 100 g. `[SZACUNEK]` przeliczono gęstością $\rho = 0.92\text{ g/ml}$ (100 ml = 92 g, 828 kcal / 3404 kJ — norma etykiet UE). 1 łyżka (15 ml) = 124 kcal, 1 łyżeczka (5 ml) = 41 kcal. |
-| 11 | **Olej** | na 100 ml | 828 | 0.0 | 0.0 | 92.0 | [USDA FDC #172336](https://fdc.nal.usda.gov/food-details/172336/nutrients) / IŻŻ | `[SPRAWDZONE]` Uniwersalny olej roślinny / rzepakowy. `[SZACUNEK]` gęstość $\rho = 0.92\text{ g/ml}$ (100 ml = 92 g, 92 g T). 1 łyżka (15 ml) = 124 kcal, 1 łyżeczka (5 ml) = 41 kcal. |
-| 12 | **Miód** | na 100 g | 304 | 0.3 | 82.4 | 0.0 | [USDA FDC #169640](https://fdc.nal.usda.gov/food-details/169640/nutrients) | `[SPRAWDZONE]` Miód pszczeli nektarowy naturalny. `[SZACUNEK]` miar: 1 łyżka ≈ 21 g (64 kcal), 1 łyżeczka ≈ 7 g (21 kcal). |
-| 13 | **Sos sojowy** | na 100 ml | 61 | 9.4 | 5.7 | 0.7 | [USDA FDC #174277](https://fdc.nal.usda.gov/food-details/174277/nutrients) | `[SPRAWDZONE]` Na 100 g: 53 kcal, B: 8.14 g, W: 4.93 g, T: 0.57 g. `[SZACUNEK]` przeliczono gęstością sosu sojowego $\rho \approx 1.15\text{ g/ml}$ na 100 ml. Popularny sos Kikkoman deklaruje na 100 ml: 77 kcal, B: 10 g, W: 3.2 g, T: 0 g. |
-| 14 | **Pomidory z puszki** | na 100 g | 19 | 1.0 | 3.6 | 0.2 | [USDA FDC #170051](https://fdc.nal.usda.gov/food-details/170051/nutrients) / IŻŻ | `[SPRAWDZONE]` Pomidory krojone/całe w soku (16–21 kcal/100 g). `[SZACUNEK]` miar: standardowa puszka = 400 g netto (~76 kcal, po odsączeniu ~240 g). |
-| 15 | **Pomidor** | na 1 szt. | 23 | 1.1 | 5.1 | 0.3 | [USDA FDC #170457](https://fdc.nal.usda.gov/food-details/170457/nutrients) / IŻŻ | `[SPRAWDZONE]` Na 100 g: 18 kcal, B: 0.88 g, W: 3.89 g, T: 0.20 g. `[SZACUNEK]` przyjęto 1 średnią sztukę = 130 g części jadalnej (wg IŻŻ i standardu handlowego). |
-| 16 | **Papryka czerwona** | na 1 szt. | 36 | 1.4 | 8.4 | 0.4 | [USDA FDC #170108](https://fdc.nal.usda.gov/food-details/170108/nutrients) | `[SPRAWDZONE]` Na 100 g: 26 kcal, B: 0.99 g, W: 6.03 g, T: 0.30 g. `[SZACUNEK]` przyjęto 1 średnią sztukę = 140 g części jadalnej (brutto ze szypułką i nasionami ~175 g, odpad 20%). |
-| 17 | **Cebula** | na 1 szt. | 40 | 1.1 | 9.3 | 0.1 | [USDA FDC #170000](https://fdc.nal.usda.gov/food-details/170000/nutrients) | `[SPRAWDZONE]` Na 100 g: 40 kcal, B: 1.10 g, W: 9.34 g, T: 0.10 g. `[SZACUNEK]` przyjęto 1 średnią sztukę = 100 g części jadalnej (brutto ~110 g). |
-| 18 | **Czosnek** | na 1 szt. | 7 | 0.3 | 1.7 | 0.0 | [USDA FDC #169230](https://fdc.nal.usda.gov/food-details/169230/nutrients) | `[SPRAWDZONE]` Na 100 g: 149 kcal, B: 6.36 g, W: 33.06 g, T: 0.50 g. `[SZACUNEK]` przyjęto 1 ząbek (szt.) = 5 g części jadalnej (wg IŻŻ). *(Patrz uwaga architektoniczna dot. jednostki `ząbek` poniżej).* |
-| 19 | **Cukinia** | na 1 szt. | 34 | 2.4 | 6.2 | 0.6 | [USDA FDC #169291](https://fdc.nal.usda.gov/food-details/169291/nutrients) | `[SPRAWDZONE]` Na 100 g: 17 kcal, B: 1.21 g, W: 3.11 g, T: 0.32 g. `[SZACUNEK]` przyjęto 1 młodą/średnią sztukę = 200 g (USDA medium = 196 g). |
-| 20 | **Jabłko** | na 1 szt. | 78 | 0.4 | 20.7 | 0.3 | [USDA FDC #171688](https://fdc.nal.usda.gov/food-details/171688/nutrients) | `[SPRAWDZONE]` Na 100 g: 52 kcal, B: 0.26 g, W: 13.81 g, T: 0.17 g. `[SZACUNEK]` przyjęto 1 średnie jabłko = 150 g części jadalnej (ze skórką, bez gniazda nasiennego; brutto ~180 g). |
-| 21 | **Pierś z kurczaka** | na 100 g | 120 | 22.5 | 0.0 | 2.6 | [USDA FDC #171077](https://fdc.nal.usda.gov/food-details/171077/nutrients) / IŻŻ | `[SPRAWDZONE]` Filet z piersi kurczaka bez skóry i kości, surowy. W polskich tabelach IŻŻ w zależności od partii: 99–120 kcal, B: 21.5–22.5 g, T: 1.3–2.6 g. |
-| 22 | **Ryż jaśminowy** | na 100 g | 365 | 7.1 | 80.0 | 0.7 | [USDA FDC #169756](https://fdc.nal.usda.gov/food-details/169756/nutrients) / IŻŻ | `[SPRAWDZONE]` Ziarno suche (surowe, niegotowane). `[SZACUNEK]` miar: 1 szklanka ryżu suchego ≈ 200 g (730 kcal). |
-| 23 | **Makaron penne** | na 100 g | 371 | 13.0 | 74.7 | 1.5 | [USDA FDC #169736](https://fdc.nal.usda.gov/food-details/169736/nutrients) / IŻŻ | `[SPRAWDZONE]` Makaron suchy z semoliny z pszenicy durum (niegotowany). |
-| 24 | **Feta** | na 100 g | 264 | 14.2 | 4.1 | 21.3 | [USDA FDC #173420](https://fdc.nal.usda.gov/food-details/173420/nutrients) | `[SPRAWDZONE]` Oryginalny grecki ser feta z mleka owczego i koziego. (Krowie sery typu sałatkowego miewają 215–240 kcal). |
-| 25 | **Parmezan** | na 100 g | 392 | 35.8 | 3.2 | 25.8 | [USDA FDC #170848](https://fdc.nal.usda.gov/food-details/170848/nutrients) / IŻŻ | `[SPRAWDZONE]` Twardy ser dojrzewający typu Parmigiano Reggiano / Grana Padano. |
-| 26 | **Jogurt naturalny** | na 100 g | 61 | 3.5 | 4.7 | 3.3 | [USDA FDC #171284](https://fdc.nal.usda.gov/food-details/171284/nutrients) / IŻŻ | `[SPRAWDZONE]` Jogurt naturalny niezagęszczany (w polskich tabelach dla 2% T: 60 kcal, B: 4.3 g, W: 5.6 g, T: 2.0 g). `[SZACUNEK]` miar: 1 łyżka ≈ 20 g (12 kcal). |
-| 27 | **Śmietanka 18%** | na 100 ml | 186 | 2.6 | 4.0 | 18.0 | [NCEZ / IŻŻ](https://ncez.pzh.gov.pl) | `[SPRAWDZONE]` Polska śmietanka słodka 18% UHT (standard rynkowy: 186 kcal / 768 kJ, T: 18.0 g, W: 3.6–4.0 g, B: 2.5–2.7 g). 1 łyżka (15 ml) = 28 kcal. |
-| 28 | **Masło** | na 100 g | 717 | 0.9 | 0.7 | 81.1 | [USDA FDC #173410](https://fdc.nal.usda.gov/food-details/173410/nutrients) / IŻŻ | `[SPRAWDZONE]` Masło tradycyjne. W polskich normach masła ekstra (min. 82.5% T): 735–740 kcal, T: 82.5 g, B: 0.7 g, W: 0.7 g. `[SZACUNEK]` miar: 1 łyżka ≈ 15 g (108 kcal), 1 łyżeczka ≈ 5 g (36 kcal). |
-| 29 | **Tuńczyk w sosie własnym** | na 100 g | 86 | 19.4 | 0.0 | 1.0 | [USDA FDC #173709](https://fdc.nal.usda.gov/food-details/173709/nutrients) / IŻŻ | `[SPRAWDZONE]` Tuńczyk w kawałkach w wodzie, po odcieku. `[SZACUNEK]` miar: puszka 160 g netto, po odsączeniu ~120 g (103 kcal, 23.3 g B). |
-
----
-
-## 3. Analiza techniczno-architektoniczna i wątpliwości dla zespołu
-
-Podczas mapowania jednostek z prototypu (`design/telefon.dc.html:889`) na reguły obliczeń makro (`docs/SPEC.md` p. 5.1 i 6.1) zidentyfikowano cztery istotne zagadnienia wymagające uwagi Developera (Etap 2) i Szefa:
-
-### 1. Czosnek: jednostka `ząbek` vs `nutrition_basis: 'szt.'`
-- **Stan obecny:** W prototypie Czosnek ma jednostki `['ząbek', 'g']`. W `SPEC.md` p. 5.1 dozwolone podstawy makro to wyłącznie: `g | ml | szt. | brak`.
-- **Problem:** Reguła obliczeń (SPEC p. 6.1b) mówi:
-  > *„szt.” tylko z „szt.”. Składnik w jednostce niezamienialnej, „do smaku” lub produkt bez wartości — pomijany;*
-  Jeśli Czosnek otrzyma w bazie danych podstawę `szt.` (z wartościami dla 1 ząbka = 7 kcal), a składnik w przepisie zostanie dodany z jednostką `ząbek`, to algorytm potraktuje `ząbek` jako jednostkę niezamienialną ze `szt.` i **pominie czosnek w obliczeniach makro**.
-- **Rekomendacja dla Developera:** W silniku obliczeń na frontendzie dodać aliasowanie: jednostka `ząbek` powinna być traktowana jako tożsama z jednostką `szt.` przy przeliczaniu na podstawę (lub w definicji bazy czosnek powinien mieć dozwolone `['ząbek', 'g']`, a przelicznik `ząbek` $\rightarrow$ podstawa `szt.` wynosi $1:1$).
-
-### 2. Warzywa i owoce na sztuki a przepisy podające wagę w gramach
-- **Stan obecny:** Pomidor, Papryka czerwona, Cebula, Cukinia, Jabłko mają jednostki `['szt.', 'g']` (i opcjonalnie `kg`). Domyślną jednostką jest `szt.`, więc podstawa makro to `na 1 szt.`.
-- **Konsekwencja:** Gdy użytkownik wprowadzi w przepisie np. `Pomidor: 250 g`, silnik obliczeń pominie tę pozycję, bo jednostka `g` nie przelicza się na `szt.`.
-- **Rekomendacja:** W obecnym Etapie 1–2 podstawa `na 1 szt.` jest najwygodniejsza (90% przepisów domowych operuje na „1 cebula”, „2 pomidory”). W kolejnych etapach warto rozważyć dodanie opcjonalnego pola `weight_per_piece_g` w tabeli produktów, umożliwiającego dwukierunkowy przelicznik szt. $\leftrightarrow$ g.
-
-### 3. Miary domowe (szklanka, łyżka, łyżeczka) dla produktów na 100 g
-- **Stan obecny:** Produkty sypkie (płatki owsiane, mąka pszenna, ryż) mają w katalogu dozwolone `szklanka` i `łyżka`, a cukier i miód `łyżka` i `łyżeczka`.
-- **Zasada SPEC 6.1b:** Przeliczanie miar domowych (`szklanka = 250 ml`, `łyżka = 15 ml`, `łyżeczka = 5 ml`) jest zdefiniowane **wyłącznie dla produktów z podstawą `na 100 ml`**.
-- **Wniosek:** Dla produktów sypkich `na 100 g`, dopóki nie zostaną zdefiniowane gęstości nasypowe (np. 1 szklanka mąki = 150 g, 1 szklanka płatków = 100 g), składniki podane w szklankach będą pomijane w makro. Rekomendacja: w instrukcji / UI sugerować podawanie składników sypkich w gramach (`g`).
-
-### 4. Jednostka `puszka`
-- Pomidory z puszki i Tuńczyk mają jednostkę `puszka`, a podstawę `na 100 g`. Podobnie jak wyżej, jednostka `puszka` bez wprowadzenia stałej wagi (np. 400 g / 120 g) będzie traktowana jako jednostka niezamienialna. W seedzie rekomendowane jest zachowanie domyślnej jednostki `g`.
+| Lp. | Produkt | Podstawa | kcal | B (g) | W (g) | T (g) | Przeliczniki (`unit_conversions`) | Źródło (link) | Uwagi |
+|:---:|:---|:---:|:---:|:---:|:---:|:---:|:---|:---|:---|
+| 1 | **Jajka** | na 1 szt. | 72 | 6.3 | 0.4 | 4.8 | *(brak)* | [USDA FDC #171287](https://fdc.nal.usda.gov/food-details/171287/nutrients) | `[SPRAWDZONE]` 143 kcal/100 g; `[SZACUNEK]` 1 jajko = 50 g części jadalnej (klasa M). Jednostka podstawy to `szt.`. |
+| 2 | **Mleko 2%** | na 100 ml | 50 | 3.4 | 4.8 | 2.0 | `szklanka` = 250 ml<br>`łyżka` = 15 ml | [USDA FDC #2705386](https://fdc.nal.usda.gov/food-details/2705386/nutrients) / IŻŻ | `[SPRAWDZONE]` Mleko pasteryzowane 2%. Miary płynów: szklanka = 250 ml, łyżka = 15 ml. |
+| 3 | **Woda** | na 100 ml | 0 | 0.0 | 0.0 | 0.0 | `szklanka` = 250 ml | [USDA FDC #174620](https://fdc.nal.usda.gov/food-details/174620/nutrients) | `[SPRAWDZONE]` Czysta woda; 0 kcal. Miara standardowa: szklanka = 250 ml. |
+| 4 | **Płatki owsiane** | na 100 g | 379 | 13.2 | 67.7 | 6.5 | `szklanka` = 100 g<br>`łyżka` = 10 g | [USDA FDC #173904](https://fdc.nal.usda.gov/food-details/173904/nutrients) | `[SPRAWDZONE]` Suche płatki owsiane. `[SZACUNEK]` miary nasypowe wg IŻŻ: 1 szklanka (250 ml) ≈ 100 g, 1 płaska łyżka ≈ 10 g. |
+| 5 | **Mąka pszenna** | na 100 g | 364 | 10.3 | 76.3 | 1.0 | `szklanka` = 150 g<br>`łyżka` = 15 g | [USDA FDC #168936](https://fdc.nal.usda.gov/food-details/168936/nutrients) | `[SPRAWDZONE]` Mąka pszenna typ 500. `[SZACUNEK]` wg tabel IŻŻ: 1 szklanka mąki ≈ 150 g (nieubita), 1 kopiasta łyżka ≈ 15 g. |
+| 6 | **Cukier** | na 100 g | 387 | 0.0 | 100.0 | 0.0 | `łyżeczka` = 5 g<br>`łyżka` = 12 g | [USDA FDC #169655](https://fdc.nal.usda.gov/food-details/169655/nutrients) | `[SPRAWDZONE]` Sacharoza biała. `[SZACUNEK]` wg IŻŻ: 1 łyżeczka = 5 g (ok. 20 kcal), 1 łyżka = 12 g (ok. 46 kcal). |
+| 7 | **Sól** | na 100 g | 0 | 0.0 | 0.0 | 0.0 | `szczypta` = 1 g<br>`łyżeczka` = 6 g | [USDA FDC #173468](https://fdc.nal.usda.gov/food-details/173468/nutrients) | `[SPRAWDZONE]` Sól kuchenna (NaCl); 0 kcal. `[SZACUNEK]` 1 szczypta ≈ 1 g, 1 łyżeczka ≈ 6 g. |
+| 8 | **Cynamon** | na 100 g | 247 | 4.0 | 80.6 | 1.2 | `łyżeczka` = 3 g | [USDA FDC #171320](https://fdc.nal.usda.gov/food-details/171320/nutrients) | `[SPRAWDZONE]` Mielona kora cynamonowca. `[SZACUNEK]` 1 łyżeczka przyprawy ≈ 3 g (7.4 kcal). |
+| 9 | **Papryka wędzona** | na 100 g | 282 | 14.1 | 54.0 | 12.9 | `łyżeczka` = 3 g | [USDA FDC #171329](https://fdc.nal.usda.gov/food-details/171329/nutrients) | `[SPRAWDZONE]` Mielona słodka papryka wędzona. `[SZACUNEK]` 1 łyżeczka ≈ 3 g (8.5 kcal). |
+| 10 | **Oliwa z oliwek** | na 100 ml | 828 | 0.0 | 0.0 | 92.0 | `łyżka` = 15 ml<br>`łyżeczka` = 5 ml | [USDA FDC #171413](https://fdc.nal.usda.gov/food-details/171413/nutrients) | `[SPRAWDZONE]` 884 kcal/100 g. `[SZACUNEK]` gęstość $\rho=0.92\text{ g/ml} \rightarrow 828\text{ kcal/100 ml}$. Łyżka = 15 ml (124 kcal), łyżeczka = 5 ml (41 kcal). |
+| 11 | **Olej** | na 100 ml | 828 | 0.0 | 0.0 | 92.0 | `łyżka` = 15 ml<br>`łyżeczka` = 5 ml | [USDA FDC #172336](https://fdc.nal.usda.gov/food-details/172336/nutrients) | `[SPRAWDZONE]` Uniwersalny olej roślinny / rzepakowy. $\rho=0.92\text{ g/ml}$. Łyżka = 15 ml, łyżeczka = 5 ml. |
+| 12 | **Miód** | na 100 g | 304 | 0.3 | 82.4 | 0.0 | `łyżeczka` = 7 g<br>`łyżka` = 21 g | [USDA FDC #169640](https://fdc.nal.usda.gov/food-details/169640/nutrients) | `[SPRAWDZONE]` Miód naturalny pszczeli. `[SZACUNEK]` gęsty syrop: 1 łyżeczka ≈ 7 g (21 kcal), 1 łyżka ≈ 21 g (64 kcal). |
+| 13 | **Sos sojowy** | na 100 ml | 61 | 9.4 | 5.7 | 0.7 | `łyżka` = 15 ml<br>`łyżeczka` = 5 ml | [USDA FDC #174277](https://fdc.nal.usda.gov/food-details/174277/nutrients) | `[SPRAWDZONE]` 53 kcal/100 g (Shoyu). `[SZACUNEK]` $\rho \approx 1.15\text{ g/ml} \rightarrow 61\text{ kcal/100 ml}$. Łyżka = 15 ml, łyżeczka = 5 ml. |
+| 14 | **Pomidory z puszki** | na 100 g | 19 | 1.0 | 3.6 | 0.2 | `puszka` = 400 g | [USDA FDC #170051](https://fdc.nal.usda.gov/food-details/170051/nutrients) | `[SPRAWDZONE]` Pomidory krojone/całe w soku. `[SZACUNEK]` standardowa puszka handlowa netto = 400 g (76 kcal). |
+| 15 | **Pomidor** | na 100 g | 18 | 0.9 | 3.9 | 0.2 | `szt.` = 130 g | [USDA FDC #170457](https://fdc.nal.usda.gov/food-details/170457/nutrients) / IŻŻ | `[SPRAWDZONE]` Świeży pomidor surowy (18 kcal/100 g). `[SZACUNEK]` 1 średnia sztuka = 130 g części jadalnej (ok. 23 kcal). |
+| 16 | **Papryka czerwona** | na 100 g | 26 | 1.0 | 6.0 | 0.3 | `szt.` = 140 g | [USDA FDC #170108](https://fdc.nal.usda.gov/food-details/170108/nutrients) | `[SPRAWDZONE]` Papryka słodka surowa. `[SZACUNEK]` 1 sztuka = 140 g części jadalnej (brutto ze szypułką ~175 g, 36 kcal). |
+| 17 | **Cebula** | na 100 g | 40 | 1.1 | 9.3 | 0.1 | `szt.` = 100 g | [USDA FDC #170000](https://fdc.nal.usda.gov/food-details/170000/nutrients) | `[SPRAWDZONE]` Cebula biała/żółta surowa. `[SZACUNEK]` 1 średnia obrana sztuka = 100 g (40 kcal). |
+| 18 | **Czosnek** | na 100 g | 149 | 6.4 | 33.1 | 0.5 | `ząbek` = 5 g | [USDA FDC #169230](https://fdc.nal.usda.gov/food-details/169230/nutrients) | `[SPRAWDZONE]` Ząbki czosnku surowe. `[SZACUNEK]` 1 obrany ząbek = 5 g (7.4 kcal). |
+| 19 | **Cukinia** | na 100 g | 17 | 1.2 | 3.1 | 0.3 | `szt.` = 200 g | [USDA FDC #169291](https://fdc.nal.usda.gov/food-details/169291/nutrients) | `[SPRAWDZONE]` Cukinia surowa ze skórką. `[SZACUNEK]` 1 średnia/młoda sztuka = 200 g (34 kcal). |
+| 20 | **Jabłko** | na 100 g | 52 | 0.3 | 13.8 | 0.2 | `szt.` = 150 g | [USDA FDC #171688](https://fdc.nal.usda.gov/food-details/171688/nutrients) | `[SPRAWDZONE]` Jabłko ze skórką surowe. `[SZACUNEK]` 1 średnie jabłko = 150 g części jadalnej (bez gniazda nasiennego, 78 kcal). |
+| 21 | **Pierś z kurczaka** | na 100 g | 120 | 22.5 | 0.0 | 2.6 | *(brak)* | [USDA FDC #171077](https://fdc.nal.usda.gov/food-details/171077/nutrients) / IŻŻ | `[SPRAWDZONE]` Filet z piersi kurczaka surowy, bez skóry. Dopuszczalne jednostki to `g` i `kg` (automatyczne przeliczenie). |
+| 22 | **Ryż jaśminowy** | na 100 g | 365 | 7.1 | 80.0 | 0.7 | `szklanka` = 200 g | [USDA FDC #169756](https://fdc.nal.usda.gov/food-details/169756/nutrients) / IŻŻ | `[SPRAWDZONE]` Ryż biały suchy (surowy). `[SZACUNEK]` 1 szklanka ryżu suchego ≈ 200 g (730 kcal). |
+| 23 | **Makaron penne** | na 100 g | 371 | 13.0 | 74.7 | 1.5 | *(brak)* | [USDA FDC #169736](https://fdc.nal.usda.gov/food-details/169736/nutrients) / IŻŻ | `[SPRAWDZONE]` Makaron durum suchy (niegotowany). Jednostki w katalogu: `g`, `kg`. |
+| 24 | **Feta** | na 100 g | 264 | 14.2 | 4.1 | 21.3 | *(brak)* | [USDA FDC #173420](https://fdc.nal.usda.gov/food-details/173420/nutrients) | `[SPRAWDZONE]` Ser feta grecki oryginalny (z mleka owczego i koziego). Jednostka w katalogu: `g`. |
+| 25 | **Parmezan** | na 100 g | 392 | 35.8 | 3.2 | 25.8 | *(brak)* | [USDA FDC #170848](https://fdc.nal.usda.gov/food-details/170848/nutrients) / IŻŻ | `[SPRAWDZONE]` Twardy ser dojrzewający. Jednostka w katalogu: `g`. |
+| 26 | **Jogurt naturalny** | na 100 g | 61 | 3.5 | 4.7 | 3.3 | `łyżka` = 20 g | [USDA FDC #171284](https://fdc.nal.usda.gov/food-details/171284/nutrients) / IŻŻ | `[SPRAWDZONE]` Jogurt naturalny niezagęszczany. `[SZACUNEK]` 1 kopiasta łyżka jogurtu ≈ 20 g (12 kcal). |
+| 27 | **Śmietanka 18%** | na 100 ml | 186 | 2.6 | 4.0 | 18.0 | `łyżka` = 15 ml | [NCEZ / IŻŻ](https://ncez.pzh.gov.pl) | `[SPRAWDZONE]` Polska śmietanka słodka 18% UHT (186 kcal/100 ml). Łyżka = 15 ml (28 kcal). |
+| 28 | **Masło** | na 100 g | 717 | 0.9 | 0.7 | 81.1 | `łyżka` = 15 g<br>`łyżeczka` = 5 g | [USDA FDC #173410](https://fdc.nal.usda.gov/food-details/173410/nutrients) / IŻŻ | `[SPRAWDZONE]` Tradycyjne masło ekstra. `[SZACUNEK]` 1 płaska łyżka ≈ 15 g (108 kcal), 1 łyżeczka ≈ 5 g (36 kcal). |
+| 29 | **Tuńczyk w sosie własnym** | na 100 g | 86 | 19.4 | 0.0 | 1.0 | `puszka` = 120 g | [USDA FDC #173709](https://fdc.nal.usda.gov/food-details/173709/nutrients) / IŻŻ | `[SPRAWDZONE]` Kawałki tuńczyka po odcieku. `[SZACUNEK]` puszka 160 g brutto $\rightarrow$ **120 g masy netto po odsączeniu** (103 kcal, 23.3 g B). |
 
 ---
 
-## 4. Dane do seeda bazy danych (wsparcie dla Etapu 2)
+## 3. Kompletna lista obiektów do migracji seed (JSON)
 
-Dla ułatwienia pracy Developera w Etapie 2, poniżej zestawiono gotowy wykaz obiektów w formacie JSON / Python do migracji seedującej tabelę `products`:
+Poniższy blok danych JSON jest bezpośrednio gotowy do wklejenia w migracji bazy PostgreSQL / teście seedującym w FastAPI (Etap 2):
 
 ```json
 [
-  { "name": "Jajka", "units": ["szt."], "nutrition_basis": "szt.", "kcal": 72, "protein": 6.3, "carbs": 0.4, "fat": 4.8 },
-  { "name": "Mleko 2%", "units": ["ml", "l", "szklanka", "łyżka"], "nutrition_basis": "ml", "kcal": 50, "protein": 3.4, "carbs": 4.8, "fat": 2.0 },
-  { "name": "Woda", "units": ["ml", "l", "szklanka"], "nutrition_basis": "ml", "kcal": 0, "protein": 0.0, "carbs": 0.0, "fat": 0.0 },
-  { "name": "Płatki owsiane", "units": ["g", "szklanka", "łyżka"], "nutrition_basis": "g", "kcal": 379, "protein": 13.2, "carbs": 67.7, "fat": 6.5 },
-  { "name": "Mąka pszenna", "units": ["g", "kg", "szklanka", "łyżka"], "nutrition_basis": "g", "kcal": 364, "protein": 10.3, "carbs": 76.3, "fat": 1.0 },
-  { "name": "Cukier", "units": ["g", "łyżeczka", "łyżka"], "nutrition_basis": "g", "kcal": 387, "protein": 0.0, "carbs": 100.0, "fat": 0.0 },
-  { "name": "Sól", "units": ["g", "szczypta", "łyżeczka"], "nutrition_basis": "g", "kcal": 0, "protein": 0.0, "carbs": 0.0, "fat": 0.0 },
-  { "name": "Cynamon", "units": ["g", "łyżeczka"], "nutrition_basis": "g", "kcal": 247, "protein": 4.0, "carbs": 80.6, "fat": 1.2 },
-  { "name": "Papryka wędzona", "units": ["g", "łyżeczka"], "nutrition_basis": "g", "kcal": 282, "protein": 14.1, "carbs": 54.0, "fat": 12.9 },
-  { "name": "Oliwa z oliwek", "units": ["ml", "łyżka", "łyżeczka"], "nutrition_basis": "ml", "kcal": 828, "protein": 0.0, "carbs": 0.0, "fat": 92.0 },
-  { "name": "Olej", "units": ["ml", "łyżka", "łyżeczka"], "nutrition_basis": "ml", "kcal": 828, "protein": 0.0, "carbs": 0.0, "fat": 92.0 },
-  { "name": "Miód", "units": ["g", "łyżeczka", "łyżka"], "nutrition_basis": "g", "kcal": 304, "protein": 0.3, "carbs": 82.4, "fat": 0.0 },
-  { "name": "Sos sojowy", "units": ["ml", "łyżka", "łyżeczka"], "nutrition_basis": "ml", "kcal": 61, "protein": 9.4, "carbs": 5.7, "fat": 0.7 },
-  { "name": "Pomidory z puszki", "units": ["g", "puszka"], "nutrition_basis": "g", "kcal": 19, "protein": 1.0, "carbs": 3.6, "fat": 0.2 },
-  { "name": "Pomidor", "units": ["szt.", "g"], "nutrition_basis": "szt.", "kcal": 23, "protein": 1.1, "carbs": 5.1, "fat": 0.3 },
-  { "name": "Papryka czerwona", "units": ["szt.", "g"], "nutrition_basis": "szt.", "kcal": 36, "protein": 1.4, "carbs": 8.4, "fat": 0.4 },
-  { "name": "Cebula", "units": ["szt.", "g"], "nutrition_basis": "szt.", "kcal": 40, "protein": 1.1, "carbs": 9.3, "fat": 0.1 },
-  { "name": "Czosnek", "units": ["ząbek", "g"], "nutrition_basis": "szt.", "kcal": 7, "protein": 0.3, "carbs": 1.7, "fat": 0.0 },
-  { "name": "Cukinia", "units": ["szt.", "g", "kg"], "nutrition_basis": "szt.", "kcal": 34, "protein": 2.4, "carbs": 6.2, "fat": 0.6 },
-  { "name": "Jabłko", "units": ["szt.", "g"], "nutrition_basis": "szt.", "kcal": 78, "protein": 0.4, "carbs": 20.7, "fat": 0.3 },
-  { "name": "Pierś z kurczaka", "units": ["g", "kg"], "nutrition_basis": "g", "kcal": 120, "protein": 22.5, "carbs": 0.0, "fat": 2.6 },
-  { "name": "Ryż jaśminowy", "units": ["g", "kg", "szklanka"], "nutrition_basis": "g", "kcal": 365, "protein": 7.1, "carbs": 80.0, "fat": 0.7 },
-  { "name": "Makaron penne", "units": ["g", "kg"], "nutrition_basis": "g", "kcal": 371, "protein": 13.0, "carbs": 74.7, "fat": 1.5 },
-  { "name": "Feta", "units": ["g"], "nutrition_basis": "g", "kcal": 264, "protein": 14.2, "carbs": 4.1, "fat": 21.3 },
-  { "name": "Parmezan", "units": ["g"], "nutrition_basis": "g", "kcal": 392, "protein": 35.8, "carbs": 3.2, "fat": 25.8 },
-  { "name": "Jogurt naturalny", "units": ["g", "łyżka"], "nutrition_basis": "g", "kcal": 61, "protein": 3.5, "carbs": 4.7, "fat": 3.3 },
-  { "name": "Śmietanka 18%", "units": ["ml", "łyżka"], "nutrition_basis": "ml", "kcal": 186, "protein": 2.6, "carbs": 4.0, "fat": 18.0 },
-  { "name": "Masło", "units": ["g", "łyżka", "łyżeczka"], "nutrition_basis": "g", "kcal": 717, "protein": 0.9, "carbs": 0.7, "fat": 81.1 },
-  { "name": "Tuńczyk w sosie własnym", "units": ["g", "puszka"], "nutrition_basis": "g", "kcal": 86, "protein": 19.4, "carbs": 0.0, "fat": 1.0 }
+  {
+    "name": "Jajka",
+    "units": ["szt."],
+    "basis": "szt.",
+    "kcal": 72,
+    "protein": 6.3,
+    "carbs": 0.4,
+    "fat": 4.8,
+    "unit_conversions": {}
+  },
+  {
+    "name": "Mleko 2%",
+    "units": ["ml", "l", "szklanka", "łyżka"],
+    "basis": "ml",
+    "kcal": 50,
+    "protein": 3.4,
+    "carbs": 4.8,
+    "fat": 2.0,
+    "unit_conversions": {
+      "szklanka": 250,
+      "łyżka": 15
+    }
+  },
+  {
+    "name": "Woda",
+    "units": ["ml", "l", "szklanka"],
+    "basis": "ml",
+    "kcal": 0,
+    "protein": 0.0,
+    "carbs": 0.0,
+    "fat": 0.0,
+    "unit_conversions": {
+      "szklanka": 250
+    }
+  },
+  {
+    "name": "Płatki owsiane",
+    "units": ["g", "szklanka", "łyżka"],
+    "basis": "g",
+    "kcal": 379,
+    "protein": 13.2,
+    "carbs": 67.7,
+    "fat": 6.5,
+    "unit_conversions": {
+      "szklanka": 100,
+      "łyżka": 10
+    }
+  },
+  {
+    "name": "Mąka pszenna",
+    "units": ["g", "kg", "szklanka", "łyżka"],
+    "basis": "g",
+    "kcal": 364,
+    "protein": 10.3,
+    "carbs": 76.3,
+    "fat": 1.0,
+    "unit_conversions": {
+      "szklanka": 150,
+      "łyżka": 15
+    }
+  },
+  {
+    "name": "Cukier",
+    "units": ["g", "łyżeczka", "łyżka"],
+    "basis": "g",
+    "kcal": 387,
+    "protein": 0.0,
+    "carbs": 100.0,
+    "fat": 0.0,
+    "unit_conversions": {
+      "łyżeczka": 5,
+      "łyżka": 12
+    }
+  },
+  {
+    "name": "Sól",
+    "units": ["g", "szczypta", "łyżeczka"],
+    "basis": "g",
+    "kcal": 0,
+    "protein": 0.0,
+    "carbs": 0.0,
+    "fat": 0.0,
+    "unit_conversions": {
+      "szczypta": 1,
+      "łyżeczka": 6
+    }
+  },
+  {
+    "name": "Cynamon",
+    "units": ["g", "łyżeczka"],
+    "basis": "g",
+    "kcal": 247,
+    "protein": 4.0,
+    "carbs": 80.6,
+    "fat": 1.2,
+    "unit_conversions": {
+      "łyżeczka": 3
+    }
+  },
+  {
+    "name": "Papryka wędzona",
+    "units": ["g", "łyżeczka"],
+    "basis": "g",
+    "kcal": 282,
+    "protein": 14.1,
+    "carbs": 54.0,
+    "fat": 12.9,
+    "unit_conversions": {
+      "łyżeczka": 3
+    }
+  },
+  {
+    "name": "Oliwa z oliwek",
+    "units": ["ml", "łyżka", "łyżeczka"],
+    "basis": "ml",
+    "kcal": 828,
+    "protein": 0.0,
+    "carbs": 0.0,
+    "fat": 92.0,
+    "unit_conversions": {
+      "łyżka": 15,
+      "łyżeczka": 5
+    }
+  },
+  {
+    "name": "Olej",
+    "units": ["ml", "łyżka", "łyżeczka"],
+    "basis": "ml",
+    "kcal": 828,
+    "protein": 0.0,
+    "carbs": 0.0,
+    "fat": 92.0,
+    "unit_conversions": {
+      "łyżka": 15,
+      "łyżeczka": 5
+    }
+  },
+  {
+    "name": "Miód",
+    "units": ["g", "łyżeczka", "łyżka"],
+    "basis": "g",
+    "kcal": 304,
+    "protein": 0.3,
+    "carbs": 82.4,
+    "fat": 0.0,
+    "unit_conversions": {
+      "łyżeczka": 7,
+      "łyżka": 21
+    }
+  },
+  {
+    "name": "Sos sojowy",
+    "units": ["ml", "łyżka", "łyżeczka"],
+    "basis": "ml",
+    "kcal": 61,
+    "protein": 9.4,
+    "carbs": 5.7,
+    "fat": 0.7,
+    "unit_conversions": {
+      "łyżka": 15,
+      "łyżeczka": 5
+    }
+  },
+  {
+    "name": "Pomidory z puszki",
+    "units": ["g", "puszka"],
+    "basis": "g",
+    "kcal": 19,
+    "protein": 1.0,
+    "carbs": 3.6,
+    "fat": 0.2,
+    "unit_conversions": {
+      "puszka": 400
+    }
+  },
+  {
+    "name": "Pomidor",
+    "units": ["szt.", "g"],
+    "basis": "g",
+    "kcal": 18,
+    "protein": 0.9,
+    "carbs": 3.9,
+    "fat": 0.2,
+    "unit_conversions": {
+      "szt.": 130
+    }
+  },
+  {
+    "name": "Papryka czerwona",
+    "units": ["szt.", "g"],
+    "basis": "g",
+    "kcal": 26,
+    "protein": 1.0,
+    "carbs": 6.0,
+    "fat": 0.3,
+    "unit_conversions": {
+      "szt.": 140
+    }
+  },
+  {
+    "name": "Cebula",
+    "units": ["szt.", "g"],
+    "basis": "g",
+    "kcal": 40,
+    "protein": 1.1,
+    "carbs": 9.3,
+    "fat": 0.1,
+    "unit_conversions": {
+      "szt.": 100
+    }
+  },
+  {
+    "name": "Czosnek",
+    "units": ["ząbek", "g"],
+    "basis": "g",
+    "kcal": 149,
+    "protein": 6.4,
+    "carbs": 33.1,
+    "fat": 0.5,
+    "unit_conversions": {
+      "ząbek": 5
+    }
+  },
+  {
+    "name": "Cukinia",
+    "units": ["szt.", "g", "kg"],
+    "basis": "g",
+    "kcal": 17,
+    "protein": 1.2,
+    "carbs": 3.1,
+    "fat": 0.3,
+    "unit_conversions": {
+      "szt.": 200
+    }
+  },
+  {
+    "name": "Jabłko",
+    "units": ["szt.", "g"],
+    "basis": "g",
+    "kcal": 52,
+    "protein": 0.3,
+    "carbs": 13.8,
+    "fat": 0.2,
+    "unit_conversions": {
+      "szt.": 150
+    }
+  },
+  {
+    "name": "Pierś z kurczaka",
+    "units": ["g", "kg"],
+    "basis": "g",
+    "kcal": 120,
+    "protein": 22.5,
+    "carbs": 0.0,
+    "fat": 2.6,
+    "unit_conversions": {}
+  },
+  {
+    "name": "Ryż jaśminowy",
+    "units": ["g", "kg", "szklanka"],
+    "basis": "g",
+    "kcal": 365,
+    "protein": 7.1,
+    "carbs": 80.0,
+    "fat": 0.7,
+    "unit_conversions": {
+      "szklanka": 200
+    }
+  },
+  {
+    "name": "Makaron penne",
+    "units": ["g", "kg"],
+    "basis": "g",
+    "kcal": 371,
+    "protein": 13.0,
+    "carbs": 74.7,
+    "fat": 1.5,
+    "unit_conversions": {}
+  },
+  {
+    "name": "Feta",
+    "units": ["g"],
+    "basis": "g",
+    "kcal": 264,
+    "protein": 14.2,
+    "carbs": 4.1,
+    "fat": 21.3,
+    "unit_conversions": {}
+  },
+  {
+    "name": "Parmezan",
+    "units": ["g"],
+    "basis": "g",
+    "kcal": 392,
+    "protein": 35.8,
+    "carbs": 3.2,
+    "fat": 25.8,
+    "unit_conversions": {}
+  },
+  {
+    "name": "Jogurt naturalny",
+    "units": ["g", "łyżka"],
+    "basis": "g",
+    "kcal": 61,
+    "protein": 3.5,
+    "carbs": 4.7,
+    "fat": 3.3,
+    "unit_conversions": {
+      "łyżka": 20
+    }
+  },
+  {
+    "name": "Śmietanka 18%",
+    "units": ["ml", "łyżka"],
+    "basis": "ml",
+    "kcal": 186,
+    "protein": 2.6,
+    "carbs": 4.0,
+    "fat": 18.0,
+    "unit_conversions": {
+      "łyżka": 15
+    }
+  },
+  {
+    "name": "Masło",
+    "units": ["g", "łyżka", "łyżeczka"],
+    "basis": "g",
+    "kcal": 717,
+    "protein": 0.9,
+    "carbs": 0.7,
+    "fat": 81.1,
+    "unit_conversions": {
+      "łyżka": 15,
+      "łyżeczka": 5
+    }
+  },
+  {
+    "name": "Tuńczyk w sosie własnym",
+    "units": ["g", "puszka"],
+    "basis": "g",
+    "kcal": 86,
+    "protein": 19.4,
+    "carbs": 0.0,
+    "fat": 1.0,
+    "unit_conversions": {
+      "puszka": 120
+    }
+  }
 ]
 ```
