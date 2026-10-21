@@ -7,10 +7,11 @@
     type CatalogueProduct,
   } from '../lib/api';
   import RecipeCard from '../lib/components/RecipeCard.svelte';
+  import RecipeDetails from '../lib/components/RecipeDetails.svelte';
   import { formatRecipeCount } from '../lib/domain/format';
   import { navigate } from '../lib/router';
 
-  let { desktop }: { desktop: boolean } = $props();
+  let { desktop, recipeId }: { desktop: boolean; recipeId?: string } = $props();
   let recipes = $state<Recipe[]>([]);
   let products = $state<CatalogueProduct[]>([]);
   let query = $state('');
@@ -46,7 +47,11 @@
       ),
   );
   const selected = $derived(
-    visible.find((recipe) => recipe.id === selectedId) ?? visible[0] ?? null,
+    recipeId !== undefined
+      ? (recipes.find((recipe) => recipe.id === recipeId) ?? null)
+      : (visible.find((recipe) => recipe.id === selectedId) ??
+          visible[0] ??
+          null),
   );
 
   onMount(() => {
@@ -112,8 +117,11 @@
           {desktop}
           selected={selected?.id === recipe.id}
           onselect={() => {
-            if (desktop) selectedId = recipe.id;
-            else navigate(`/przepis/${encodeURIComponent(recipe.id)}`);
+            if (desktop) {
+              if (recipeId !== undefined)
+                navigate(`/przepis/${encodeURIComponent(recipe.id)}`);
+              else selectedId = recipe.id;
+            } else navigate(`/przepis/${encodeURIComponent(recipe.id)}`);
           }}
         />
       {/each}
@@ -126,7 +134,18 @@
   </section>
   {#if desktop}
     <aside aria-label="Szczegóły przepisu">
-      {#if selected}<h2>{selected.title}</h2>{/if}
+      {#if selected}
+        {#key selected.id}<RecipeDetails
+            recipe={selected}
+            {products}
+            desktop={true}
+          />{/key}
+      {:else if recipeId && !loading && !error}
+        <div class="missing">
+          <h2>Przepis</h2>
+          <p role="alert">Przepis nie istnieje.</p>
+        </div>
+      {/if}
     </aside>
   {/if}
 </div>
@@ -258,7 +277,10 @@
     border-left: 1px solid var(--border);
     background: var(--background);
   }
-  h2 {
+  .missing {
+    padding: 24px;
+  }
+  .missing h2 {
     margin: 0;
     padding: 24px;
     font-family: var(--font-heading);
