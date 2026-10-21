@@ -22,9 +22,9 @@
       {#each links as link (link.page)}
         <button
           class:active={page === link.page ||
-            (link.page === 'recipes' && page === 'recipe')}
+            (link.page === 'recipes' && (page === 'recipe' || page === 'edit'))}
           aria-current={page === link.page ||
-          (link.page === 'recipes' && page === 'recipe')
+          (link.page === 'recipes' && (page === 'recipe' || page === 'edit'))
             ? 'page'
             : undefined}
           onclick={() => navigate(link.path)}
@@ -44,9 +44,9 @@
 {:else if page !== 'recipe'}
   <nav class="tabbar" aria-label="Nawigacja">
     <button
-      class:active={page === 'recipes'}
+      class:active={page === 'recipes' || page === 'edit'}
       aria-label="Przepisy"
-      aria-current={page === 'recipes' ? 'page' : undefined}
+      aria-current={page === 'recipes' || page === 'edit' ? 'page' : undefined}
       onclick={() => navigate('/')}
     >
       <Icon kind="recipes" />Przepisy

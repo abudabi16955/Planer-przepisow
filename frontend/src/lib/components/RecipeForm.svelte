@@ -2,6 +2,7 @@
   import { onMount, untrack } from 'svelte';
   import {
     getProducts,
+    fileUrl,
     post,
     upload,
     type Recipe,
@@ -60,6 +61,9 @@
       (number(time) === null ||
         (Number.isInteger(number(time)) && number(time)! > 0)) &&
       (source === 'manual' ||
+        (source === 'link' &&
+          initialRecipe?.source_type === 'link' &&
+          initialRecipe.video) ||
         (source === 'pdf' && (pdf || initialRecipe?.pdf))),
   );
   const calculated = $derived(
@@ -143,7 +147,12 @@
 
 <form onsubmit={save}>
   <header>
-    <h1>Dodaj przepis</h1>
+    <h1>{initialRecipe ? 'Edytuj przepis' : 'Dodaj przepis'}</h1>
+    {#if initialRecipe}<button
+        type="button"
+        disabled={pending}
+        onclick={() => navigate(`/przepis/${initialRecipe.id}`)}>Anuluj</button
+      >{/if}
     <button class="primary save" disabled={!valid || pending} type="submit"
       >{pending ? 'Zapisywanie…' : 'Zapisz przepis'}</button
     >
@@ -155,14 +164,24 @@
             type="button"
             role="tab"
             aria-selected={source === value}
+            disabled={value === 'manual' &&
+              !!(initialRecipe?.pdf || initialRecipe?.video)}
             onclick={() => (source = value)}>{label}</button
           >{/each}
       </div>
-      {#if source === 'link'}<p>
+      {#if source === 'link' && initialRecipe?.video}
+        <p>Wideo zapisane · {formatFileSize(initialRecipe.video.size_bytes)}</p>
+      {:else if source === 'link'}<p>
           Pobieranie z linku jest chwilowo niedostępne.
         </p>{:else if source === 'manual'}<p>
           Własny przepis bez źródła. Wypełnij pola poniżej.
-        </p>{:else}<label class="file"
+        </p>{:else}
+        {#if initialRecipe?.pdf && !pdf}<p>
+            {initialRecipe.pdf.original_name || 'PDF'} · {formatFileSize(
+              initialRecipe.pdf.size_bytes,
+            )}
+          </p>{/if}
+        <label class="file"
           >Wybierz plik PDF<input
             type="file"
             accept="application/pdf,.pdf"
@@ -238,7 +257,11 @@
       </div>
     </section>
     <label class="photo file"
-      >Dodaj zdjęcie dania<input
+      >{#if initialRecipe?.photo}<img
+          class="existing-photo"
+          src={fileUrl(initialRecipe.photo) ?? undefined}
+          alt="Zdjęcie dania"
+        />{/if}Dodaj zdjęcie dania<input
         type="file"
         accept="image/*"
         onchange={(event) => (photo = event.currentTarget.files?.[0] ?? null)}
@@ -249,6 +272,14 @@
 </form>
 
 <style>
+  .existing-photo {
+    display: block;
+    width: 80px;
+    height: 80px;
+    object-fit: cover;
+    border-radius: 12px;
+    margin-bottom: 8px;
+  }
   form {
     padding: 24px 16px 120px;
   }
