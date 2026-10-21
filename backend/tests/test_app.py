@@ -36,8 +36,12 @@ def test_migrations_from_empty_and_idempotent(clean_database):
         migrate(pool)
         migrate(pool)
         with pool.connection() as connection:
-            assert connection.execute("SELECT version FROM schema_version").fetchall() == [
-                ("001_init.sql",)
+            assert connection.execute(
+                "SELECT version FROM schema_version ORDER BY version"
+            ).fetchall() == [
+                ("001_init.sql",),
+                ("002_schema.sql",),
+                ("003_seed_products.sql",),
             ]
 
 
