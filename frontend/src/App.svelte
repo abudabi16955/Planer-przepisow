@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import Recipes from './screens/Recipes.svelte';
   import Navigation from './lib/components/Navigation.svelte';
   import Toast from './lib/components/Toast.svelte';
   import { route, type Page } from './lib/router';
@@ -25,8 +26,15 @@
 
 <div class="shell" class:desktop>
   <Navigation {desktop} page={$route.page} />
-  <main class:detail={$route.page === 'recipe'}>
-    <h1>{headings[$route.page]}</h1>
+  <main
+    class:detail={$route.page === 'recipe'}
+    class:recipes={$route.page === 'recipes'}
+  >
+    {#if $route.page === 'recipes'}
+      <Recipes {desktop} />
+    {:else}
+      <h1>{headings[$route.page]}</h1>
+    {/if}
   </main>
   <Toast />
 </div>
@@ -48,5 +56,9 @@
   }
   .desktop main {
     padding: 32px;
+  }
+  main.recipes,
+  .desktop main.recipes {
+    padding: 0;
   }
 </style>

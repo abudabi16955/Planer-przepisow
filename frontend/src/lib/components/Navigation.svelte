@@ -131,6 +131,7 @@
     font-weight: 700;
   }
   .tabbar {
+    z-index: 2;
     position: fixed;
     left: 0;
     right: 0;
