@@ -1,0 +1,15 @@
+.env
+.venv/
+node_modules/
+.pgdata/
+data/
+dist/
+__pycache__/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+playwright-report/
+test-results/
+.worktrees/
+
+*.log
