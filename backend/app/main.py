@@ -1,4 +1,6 @@
-from contextlib import asynccontextmanager
+import asyncio
+import logging
+from contextlib import asynccontextmanager, suppress
 from importlib.util import find_spec
 from pathlib import Path
 from tempfile import TemporaryFile
@@ -12,7 +14,10 @@ from starlette.exceptions import HTTPException
 
 from app.config import Settings
 from app.db import migrate
+from app.routers.files import router as files_router
 from app.routers.products import router as products_router
+from app.routers.recipes import router as recipes_router
+from app.storage import Storage
 
 
 class SPAFiles(StaticFiles):
@@ -42,7 +47,32 @@ def create_app(settings: Settings | None = None, static_dir: Path | None = None)
             pool.wait(timeout=10)
             migrate(pool)
             app.state.pool = pool
-            yield
+            app.state.settings = settings
+            app.state.storage = Storage(settings.data_dir)
+
+            async def cleanup():
+                while True:
+                    try:
+                        worker = asyncio.create_task(
+                            asyncio.to_thread(app.state.storage.cleanup_tmp, pool)
+                        )
+                        try:
+                            await asyncio.shield(worker)
+                        except asyncio.CancelledError:
+                            with suppress(OSError, psycopg.Error):
+                                await worker
+                            raise
+                    except (OSError, psycopg.Error):
+                        logging.getLogger(__name__).exception("Nie udało się posprzątać plików tmp")
+                    await asyncio.sleep(3600)
+
+            task = asyncio.create_task(cleanup())
+            try:
+                yield
+            finally:
+                task.cancel()
+                with suppress(asyncio.CancelledError):
+                    await task
 
     app = FastAPI(title="Planer przepisów", lifespan=lifespan)
 
@@ -66,6 +96,8 @@ def create_app(settings: Settings | None = None, static_dir: Path | None = None)
         }
 
     app.include_router(products_router)
+    app.include_router(files_router)
+    app.include_router(recipes_router)
 
     static_dir = static_dir or Path("frontend/dist").resolve()
     if static_dir.is_dir():
