@@ -51,6 +51,7 @@ jobs:
   e2e:
     needs: frontend
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     services:
       postgres:
         image: postgres:18
@@ -80,8 +81,33 @@ jobs:
       - run: backend/.venv/bin/pip install ./backend
       - run: npm --prefix frontend ci
       - run: npm --prefix frontend run build
-      - run: npx playwright install --with-deps chromium
+      - name: Wersja Playwrighta
+        id: pw
+        run: echo "version=$(node -p "require('./frontend/package-lock.json').packages['node_modules/@playwright/test'].version")" >> "$GITHUB_OUTPUT"
+      - name: Cache przeglądarek Playwrighta
+        id: pw-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
+      - name: Zainstaluj przeglądarkę Playwrighta (z ponowieniami)
+        timeout-minutes: 15
         working-directory: frontend
+        env:
+          CACHE_HIT: ${{ steps.pw-cache.outputs.cache-hit }}
+        run: |
+          if [ "$CACHE_HIT" = "true" ]; then
+            args="install-deps chromium"
+          else
+            args="install --with-deps chromium"
+          fi
+          for attempt in 1 2 3; do
+            if timeout 5m npx playwright $args; then
+              exit 0
+            fi
+            echo "Próba $attempt nieudana lub przekroczono 5 min" >&2
+          done
+          exit 1
       - run: npm --prefix frontend run test:e2e
   docker:
     runs-on: ubuntu-latest
