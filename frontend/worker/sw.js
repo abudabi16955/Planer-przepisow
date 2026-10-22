@@ -10,7 +10,14 @@ const worker = /** @type {ServiceWorkerGlobalScope} */ (
 worker.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then(async (cache) => {
-      await cache.addAll(SHELL);
+      await cache.addAll(
+        SHELL.map(
+          (path) =>
+            new Request(new URL(path, worker.location.origin), {
+              cache: 'reload',
+            }),
+        ),
+      );
       await worker.skipWaiting();
     }),
   );
@@ -41,7 +48,7 @@ worker.addEventListener('fetch', (event) => {
     return;
   if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(request).catch(async () => {
+      fetch(request, { cache: 'no-cache' }).catch(async () => {
         const cached = await (
           await caches.open(CACHE_NAME)
         ).match('/index.html');

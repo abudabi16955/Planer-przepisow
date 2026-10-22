@@ -33,7 +33,7 @@ function directory() {
 function harness() {
   const events = new Map<string, (event: unknown) => void>();
   const cache = {
-    addAll: vi.fn(async () => {}),
+    addAll: vi.fn<(requests: Request[]) => Promise<void>>(async () => {}),
     match: vi.fn(async () => new Response('cached shell')),
   };
   const caches = {
@@ -55,6 +55,7 @@ function harness() {
     fetch,
     URL,
     Response,
+    Request,
     Set,
   });
   function dispatch(type: string, properties: Record<string, unknown> = {}) {
@@ -90,8 +91,14 @@ function harness() {
 test('install precaches only shell files and activates after a complete download', async () => {
   const h = harness();
   await h.dispatch('install');
-  expect(h.cache.addAll.mock.calls[0]).toEqual([
-    ['/assets/main.js', '/index.html'],
+  expect(
+    h.cache.addAll.mock.calls[0][0].map((request) => [
+      new URL(request.url).pathname,
+      request.cache,
+    ]),
+  ).toEqual([
+    ['/assets/main.js', 'reload'],
+    ['/index.html', 'reload'],
   ]);
   expect(h.self.skipWaiting).toHaveBeenCalledOnce();
   h.cache.addAll.mockRejectedValueOnce(new Error('offline'));
