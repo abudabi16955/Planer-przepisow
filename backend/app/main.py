@@ -99,7 +99,10 @@ def create_app(settings: Settings | None = None, static_dir: Path | None = None)
 
     @app.get("/api/config")
     def config():
-        return {"import_enabled": app.state.import_jobs.enabled}
+        return {
+            "import_enabled": app.state.import_jobs.enabled,
+            "max_video_mb": settings.max_video_mb,
+        }
 
     app.include_router(imports_router)
     app.include_router(products_router)

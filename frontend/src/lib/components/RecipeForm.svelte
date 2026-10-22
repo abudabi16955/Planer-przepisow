@@ -15,6 +15,8 @@
   import { navigate } from '../router';
   import { showToast } from '../toast';
   import IngredientPicker from './IngredientPicker.svelte';
+  import LinkImport from './LinkImport.svelte';
+  import type { ImportJob } from '../importApi';
   let {
     initialRecipe,
     onSave = (data: unknown) => post<Recipe>('/api/recipes', data),
@@ -48,6 +50,13 @@
   let pdfInput: HTMLInputElement | undefined = $state();
   let photo = $state<File | null>(null);
   let pending = $state(false);
+  let importResult = $state<ImportJob | null>(null);
+  let linkChanged = $state(false);
+  function imported(job: ImportJob | null) {
+    importResult = job;
+    linkChanged = true;
+    if (job && !title.trim()) title = job.title || '';
+  }
   let error = $state('');
   const number = (value: string): number | null => {
     const parsed = value.trim() ? Number(value.replace(',', '.')) : NaN;
@@ -62,8 +71,10 @@
         (Number.isInteger(number(time)) && number(time)! > 0)) &&
       (source === 'manual' ||
         (source === 'link' &&
-          initialRecipe?.source_type === 'link' &&
-          initialRecipe.video) ||
+          (importResult?.video ||
+            (!linkChanged &&
+              initialRecipe?.source_type === 'link' &&
+              initialRecipe.video))) ||
         (source === 'pdf' && (pdf || initialRecipe?.pdf))),
   );
   const calculated = $derived(
@@ -120,6 +131,7 @@
         time_min: number(time),
         servings: number(servings),
         source_type: source,
+        import_job_id: source === 'link' ? importResult?.id : undefined,
         steps: steps
           .split('\n')
           .map((s) => s.trim())
@@ -169,13 +181,15 @@
             onclick={() => (source = value)}>{label}</button
           >{/each}
       </div>
-      {#if source === 'link' && initialRecipe?.video}
-        <p>Wideo zapisane · {formatFileSize(initialRecipe.video.size_bytes)}</p>
-      {:else if source === 'link'}<p>
-          Pobieranie z linku jest chwilowo niedostępne.
-        </p>{:else if source === 'manual'}<p>
+      <LinkImport
+        {initialRecipe}
+        active={source === 'link'}
+        disabled={pending}
+        onchange={imported}
+      />
+      {#if source === 'manual'}<p>
           Własny przepis bez źródła. Wypełnij pola poniżej.
-        </p>{:else}
+        </p>{:else if source === 'pdf'}
         {#if initialRecipe?.pdf && !pdf}<p>
             {initialRecipe.pdf.original_name || 'PDF'} · {formatFileSize(
               initialRecipe.pdf.size_bytes,
@@ -257,11 +271,17 @@
       </div>
     </section>
     <label class="photo file"
-      >{#if initialRecipe?.photo}<img
+      >{#if source === 'link' && importResult?.thumbnail && !photo}<img
+          class="existing-photo"
+          src={fileUrl(importResult.thumbnail) ?? undefined}
+          alt="Okładka z wideo"
+        />{:else if initialRecipe?.photo}<img
           class="existing-photo"
           src={fileUrl(initialRecipe.photo) ?? undefined}
           alt="Zdjęcie dania"
-        />{/if}Dodaj zdjęcie dania<input
+        />{/if}{source === 'link' && importResult?.thumbnail && !photo
+        ? 'Okładka z wideo · zmień zdjęcie'
+        : 'Dodaj zdjęcie dania'}<input
         type="file"
         accept="image/*"
         onchange={(event) => (photo = event.currentTarget.files?.[0] ?? null)}

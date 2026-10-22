@@ -1,5 +1,6 @@
 from importlib import import_module
 from importlib.util import find_spec
+from pathlib import Path
 from uuid import uuid4
 
 from app.importers.base import ImportError, ImportResult, platform_for_url
@@ -13,11 +14,12 @@ class FakeImporter:
         platform = platform_for_url(url)
         video = workdir / f"{uuid4()}.mp4"
         thumbnail = workdir / f"{uuid4()}.jpg"
-        content = b"\x00\x00\x00\x18ftypmp42fake-public-video"
+        fixtures = Path(__file__).with_name("fixtures")
+        content = (fixtures / "video.mp4").read_bytes()
         if len(content) > limits.max_video_bytes:
             raise ImportError("too_large")
         video.write_bytes(content)
-        thumbnail.write_bytes(b"\xff\xd8\xfffake-thumbnail")
+        thumbnail.write_bytes((fixtures / "thumbnail.jpg").read_bytes())
         return ImportResult(
             video, thumbnail, "Opis publicznego posta", "Przepis", platform, len(content)
         )

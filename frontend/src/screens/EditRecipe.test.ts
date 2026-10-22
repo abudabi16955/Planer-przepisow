@@ -146,7 +146,11 @@ test.each(['pdf', 'link'] as const)(
       ),
     );
     expect(
-      vi.mocked(fetch).mock.calls.every(([url]) => url === '/api/products'),
+      vi
+        .mocked(fetch)
+        .mock.calls.every(
+          ([url]) => url === '/api/products' || url === '/api/config',
+        ),
     ).toBe(true);
   },
 );

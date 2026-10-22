@@ -436,6 +436,7 @@
                 <!-- svelte-ignore a11y_media_has_caption (Imported user videos do not include captions.) -->
                 <video
                   src={video}
+                  poster={photo ?? undefined}
                   controls
                   playsinline
                   preload="metadata"
