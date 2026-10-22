@@ -21,6 +21,7 @@
   import { paletteForRecipe } from '../lib/recipeCards';
   import { navigate } from '../lib/router';
   import { showToast } from '../lib/toast';
+  import DaySummary from '../lib/components/DaySummary.svelte';
   import PlanSlot from '../lib/components/PlanSlot.svelte';
   import RecipePicker from '../lib/components/RecipePicker.svelte';
   let {
@@ -223,7 +224,6 @@
         <h2>{formatDayHeading(selectedDay)}</h2>
         {#if selectedDay === currentDate}<span class="today">Dziś</span>{/if}
       </div>
-      <div class="summary-space"></div>
       <div class="mobile-slots">
         {#each slots as slot (slot)}<PlanSlot
             label={labels[slot]}
@@ -234,6 +234,12 @@
             onremove={() => remove(selectedDay, slot)}
           />{/each}
       </div>
+      {#if !catalogLoading && !catalogError && !planError}<DaySummary
+          date={selectedDay}
+          {entries}
+          {recipes}
+          {products}
+        />{/if}
     {/if}
   </section>
   {#if desktop}<aside aria-label="Podsumowanie dnia">
@@ -241,7 +247,13 @@
         <h2>{formatDayHeading(selectedDay)}</h2>
         {#if selectedDay === currentDate}<span class="today">Dziś</span>{/if}
       </div>
-      <div class="summary-space"></div>
+      {#if !catalogLoading && !catalogError && !planError}<DaySummary
+          date={selectedDay}
+          {entries}
+          {recipes}
+          {products}
+          desktop={true}
+        />{/if}
     </aside>{/if}
 </div>
 {#if choosing}<RecipePicker
