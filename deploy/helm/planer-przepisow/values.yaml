@@ -1,0 +1,88 @@
+# Aplikacja działa zawsze w 1 replice (kolejka importu w procesie, PVC RWO).
+
+image:
+  repository: ghcr.io/abudabi16955/planer-przepisow
+  tag: ""            # puste = appVersion z Chart.yaml
+  pullPolicy: IfNotPresent
+imagePullSecrets: []   # np. [{name: ghcr-pull}] gdy pakiet GHCR jest prywatny
+
+# Zmienne środowiskowe (ConfigMap) — docs/ARCHITECTURE.md p. 6
+config:
+  APP_TIMEZONE: Europe/Warsaw
+  IMPORT_BACKEND: ytdlp
+  IMPORT_TIMEOUT_S: "120"
+  MAX_VIDEO_MB: "300"
+  MAX_PDF_MB: "50"
+  MAX_PHOTO_MB: "15"
+  LOG_LEVEL: info
+  DB_POOL_SIZE: "5"
+
+# DATABASE_URL pochodzi wyłącznie z Secret. Żadnych haseł w values.
+database:
+  # Nazwa istniejącego Secretu z kluczem `secretKey` (baza zewnętrzna).
+  # Ignorowane, gdy postgresql.enabled=true albo podano `url`.
+  existingSecret: planer-przepisow-database
+  secretKey: DATABASE_URL
+  # Opcjonalnie: chart sam utworzy Secret z tej wartości. Podawaj tylko
+  # przez --set database.url=... (nigdy w pliku w repo).
+  url: ""
+
+persistence:
+  size: 10Gi
+  storageClass: ""
+  accessModes: [ReadWriteOnce]
+  existingClaim: ""
+
+service:
+  type: ClusterIP
+  port: 80
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  host: planer.example.com
+  tls: []            # np. [{secretName: planer-tls, hosts: [planer.example.com]}]
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    memory: 1Gi
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+# Wbudowany PostgreSQL (StatefulSet). Wyłączony — wtedy użyj database.*.
+postgresql:
+  enabled: false
+  image: postgres:18
+  database: planer
+  user: planer
+  auth:
+    # Istniejący Secret z kluczem `passwordKey`; puste = chart generuje
+    # losowe hasło przy instalacji (zachowywane przy upgrade).
+    existingSecret: ""
+    passwordKey: password
+  persistence:
+    size: 5Gi
+    storageClass: ""
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 1Gi
+
+# Kopie zapasowe: CronJob z pg_dump (format custom) na osobny PVC.
+backup:
+  enabled: false
+  schedule: "0 3 * * *"
+  keep: 14            # ile ostatnich kopii zostawić
+  image: postgres:18
+  persistence:
+    size: 5Gi
+    storageClass: ""
+    existingClaim: ""

@@ -1,0 +1,17 @@
+Zainstalowano {{ include "planer.fullname" . }} (obraz {{ include "planer.image" . }}).
+
+{{- if .Values.ingress.enabled }}
+
+Adres: http{{ if .Values.ingress.tls }}s{{ end }}://{{ .Values.ingress.host }}
+{{- else }}
+
+Dostęp lokalny:
+  kubectl --namespace {{ .Release.Namespace }} port-forward svc/{{ include "planer.fullname" . }} 8080:{{ .Values.service.port }}
+  # potem http://localhost:8080
+{{- end }}
+
+Stan: kubectl --namespace {{ .Release.Namespace }} get pods -l app.kubernetes.io/instance={{ .Release.Name }}
+{{- if not (or .Values.postgresql.enabled .Values.database.url) }}
+
+Baza zewnętrzna: Secret "{{ .Values.database.existingSecret }}" z kluczem {{ .Values.database.secretKey }} musi istnieć.
+{{- end }}
