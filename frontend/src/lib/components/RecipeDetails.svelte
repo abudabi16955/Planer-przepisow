@@ -13,6 +13,7 @@
   import { clampServings, formatScaledQuantity } from '../domain/scale';
   import { paletteForRecipe } from '../recipeCards';
   import { navigate } from '../router';
+  import AddToPlanner from './AddToPlanner.svelte';
   import Icon from './Icon.svelte';
 
   let {
@@ -481,6 +482,7 @@
       {/if}
     </div>
   </div>
+  <AddToPlanner {recipe} {desktop} />
 </article>
 
 {#if confirming}
@@ -513,6 +515,23 @@
 {/if}
 
 <style>
+  article:not(.desktop) {
+    padding-bottom: 84px;
+  }
+  article.desktop {
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+  }
+  .desktop .hero {
+    flex: none;
+  }
+  .desktop .body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+  }
+
   .confirm-overlay {
     position: fixed;
     inset: 0;
