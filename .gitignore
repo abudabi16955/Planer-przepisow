@@ -13,3 +13,4 @@ test-results/
 .worktrees/
 
 *.log
+.tools/
