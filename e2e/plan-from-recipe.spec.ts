@@ -1,0 +1,44 @@
+import {expect,test} from '../frontend/node_modules/@playwright/test';
+test('dodaj ręcznie, zaplanuj ze szczegółów i sprawdź w Planerze',async({page,request},testInfo)=>{
+  const desktop=testInfo.project.name==='laptop';
+  const week=desktop?'2027-02-15':'2027-02-08';
+  const day=desktop?'2027-02-17':'2027-02-10';
+  const now=desktop?'2027-02-16T10:00:00Z':'2027-02-09T10:00:00Z';
+  const dayAria=desktop?'Środa 17 lutego':'Środa 10 lutego';
+  const dayHeading=desktop?'Środa, 17 lutego':'Środa, 10 lutego';
+  const title=`Ze szczegółów ${crypto.randomUUID()}`;
+  const old=await(await request.post('/api/recipes',{data:{title:`Poprzedni ${crypto.randomUUID()}`,category:'kolacja',servings:1}})).json();
+  let id:string|undefined;
+  try{
+    expect((await request.put(`/api/plan/${day}/2`,{data:{recipe_id:old.id}})).status()).toBe(200);
+    await page.clock.install({time:new Date(now)});
+    await page.goto('/dodaj');
+    await page.getByRole('tab',{name:'Ręcznie'}).click();
+    await page.getByLabel('Nazwa',{exact:true}).fill(title);
+    await page.getByLabel('Porcje',{exact:true}).fill('2');
+    await page.getByRole('button',{name:'Obiad',exact:true}).click();
+    const created=page.waitForResponse(response=>response.url().endsWith('/api/recipes')&&response.request().method()==='POST');
+    await page.getByRole('button',{name:'Zapisz przepis'}).click();
+    const response=await created;expect(response.status()).toBe(201);id=(await response.json()).id;
+    await expect(page.getByRole('heading',{name:title,exact:true})).toBeVisible();
+    await page.getByRole('button',{name:'Dodaj do planera',exact:true}).click();
+    const panel=desktop?page.getByRole('region',{name:'Dodaj do planera',exact:true}):page.getByRole('dialog',{name:'Dodaj do planera',exact:true});
+    await expect(panel.getByRole('button',{name:'Obiad',exact:true})).toHaveAttribute('aria-pressed','true');
+    await panel.getByRole('button',{name:dayAria,exact:true}).click();
+    await panel.getByRole('button',{name:'Kolacja',exact:true}).click();
+    await expect(panel.getByText(`Zastąpi: ${old.title}`,{exact:true})).toBeVisible();
+    const assigned=page.waitForResponse(response=>response.url().endsWith(`/api/plan/${day}/2`)&&response.request().method()==='PUT');
+    await panel.getByRole('button',{name:desktop?'Dodaj do wybranego dnia':'Dodaj',exact:true}).click();
+    expect((await assigned).status()).toBe(200);
+    await expect(panel).toHaveCount(0);
+    await expect(page.getByRole('status').filter({hasText:`Dodano do planera: ${title}`})).toBeVisible();
+    expect(await(await request.get(`/api/plan?week=${week}`)).json()).toEqual([{date:day,slot:2,recipe_id:id}]);
+    if(!desktop)await page.getByRole('button',{name:'Wróć',exact:true}).click();
+    await page.getByRole('navigation',{name:'Nawigacja'}).getByRole('button',{name:'Planer',exact:true}).click();
+    await page.getByRole('button',{name:dayAria,exact:true}).click();
+    const target=desktop?page.getByRole('group',{name:dayHeading,exact:true}).getByRole('group',{name:'Kolacja',exact:true}):page.getByRole('group',{name:'Kolacja',exact:true});
+    await expect(target.getByRole('button',{name:`Otwórz przepis: ${title}`,exact:true})).toBeVisible();
+    await page.reload();await page.getByRole('button',{name:dayAria,exact:true}).click();
+    await expect(target.getByRole('button',{name:`Otwórz przepis: ${title}`,exact:true})).toBeVisible();
+  }finally{await request.delete(`/api/plan/${day}/2`);if(id)await request.delete(`/api/recipes/${id}`);await request.delete(`/api/recipes/${old.id}`);}
+});
