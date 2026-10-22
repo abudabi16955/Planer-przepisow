@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "planer.fullname" . }}
+  labels:
+    {{- include "planer.labels" . | nindent 4 }}
+data:
+  DATA_DIR: /data
+  PORT: "8000"
+  {{- range $k, $v := .Values.config }}
+  {{ $k }}: {{ $v | quote }}
+  {{- end }}

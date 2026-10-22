@@ -1,0 +1,71 @@
+{{- if .Values.backup.enabled }}
+{{- if not .Values.backup.persistence.existingClaim }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "planer.fullname" . }}-backup
+  labels:
+    {{- include "planer.labels" . | nindent 4 }}
+spec:
+  accessModes: [ReadWriteOnce]
+  {{- with .Values.backup.persistence.storageClass }}
+  storageClassName: {{ . | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.backup.persistence.size }}
+---
+{{- end }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "planer.fullname" . }}-backup
+  labels:
+    {{- include "planer.labels" . | nindent 4 }}
+spec:
+  schedule: {{ .Values.backup.schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        spec:
+          restartPolicy: Never
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10001
+            runAsGroup: 10001
+            fsGroup: 10001
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: pg-dump
+              image: {{ .Values.backup.image | quote }}
+              env:
+                {{- include "planer.databaseEnv" . | nindent 16 }}
+                - name: KEEP
+                  value: {{ .Values.backup.keep | quote }}
+              command:
+                - sh
+                - -ec
+                - |
+                  f="/backup/planer-$(date +%Y%m%d-%H%M%S).dump"
+                  pg_dump --format=custom --file="$f.tmp" "$DATABASE_URL"
+                  mv "$f.tmp" "$f"
+                  ls -1t /backup/planer-*.dump | tail -n +$((KEEP + 1)) | xargs -r rm -f
+                  echo "Zapisano $f"
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: [ALL]
+              volumeMounts:
+                - name: backup
+                  mountPath: /backup
+          volumes:
+            - name: backup
+              persistentVolumeClaim:
+                claimName: {{ default (printf "%s-backup" (include "planer.fullname" .)) .Values.backup.persistence.existingClaim }}
+{{- end }}

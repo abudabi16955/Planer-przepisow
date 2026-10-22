@@ -88,9 +88,38 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: docker build -t planer-przepisow:ci .
+  helm:
+    runs-on: ubuntu-latest
+    env:
+      CHART: deploy/helm/planer-przepisow
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+        with:
+          version: v3.16.4
+      - name: Zainstaluj kubeconform
+        run: |
+          curl -sSL https://github.com/yannh/kubeconform/releases/download/v0.6.7/kubeconform-linux-amd64.tar.gz \
+            | tar xz -C /usr/local/bin kubeconform
+      - run: helm lint "$CHART"
+      - name: helm template (domyślny) | kubeconform
+        run: helm template planer "$CHART" | kubeconform -strict -summary
+      - name: helm template (wszystko włączone) | kubeconform
+        run: |
+          helm template planer "$CHART" \
+            --set postgresql.enabled=true --set backup.enabled=true \
+            --set ingress.enabled=true --set 'ingress.tls[0].secretName=planer-tls' \
+            --set 'imagePullSecrets[0].name=pull' --set image.tag=0.1.0 \
+            | kubeconform -strict -summary
+      - name: helm template (baza zewnętrzna z url, istniejący PVC)
+        run: |
+          helm template planer "$CHART" \
+            --set database.url=postgresql://u:p@h:5432/planer \
+            --set persistence.existingClaim=dane \
+            | kubeconform -strict -summary
   ci:
     if: always()
-    needs: [backend, frontend, e2e, docker]
+    needs: [backend, frontend, e2e, docker, helm]
     runs-on: ubuntu-latest
     steps:
       - name: Wszystkie wymagane joby zakończyły się sukcesem

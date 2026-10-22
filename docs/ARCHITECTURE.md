@@ -139,7 +139,7 @@ Brak logowania w v1 (decyzja właściciela, SPEC p. 9.1). Jedyny sekret to hasł
 ## 7. Docker i Kubernetes
 
 - **Dockerfile multi-stage**: (1) `node:24-slim` buduje frontend → `dist/`; (2) `python:3.12-slim` + `apt-get install ffmpeg` (w obrazie, nie na VM), venv z zależnościami (w tym yt-dlp), kopiuje `dist/` jako statyczne pliki; użytkownik nie-root (UID 10001), `HEALTHCHECK` na `/api/health`, `VOLUME /data`.
-- **K8s** (`deploy/k8s/`, przykładowe): Deployment aplikacji — 1 replika (kolejka importu działa w procesie, a PVC na pliki to zwykle ReadWriteOnce; więcej replik wymagałoby wolumenu RWX i przeniesienia kolejki do bazy — nie w v1), `strategy: Recreate`, PVC na `/data`, Secret z `DATABASE_URL`, ConfigMap ze zmiennymi, liveness/readiness `/api/health`, `securityContext: runAsNonRoot, readOnlyRootFilesystem` (zapisy tylko do `/data` i `/tmp` jako emptyDir). Ingress poza zakresem repo (zależny od klastra). **PostgreSQL**: w repo przykładowy StatefulSet `postgres:18` z własnym PVC (wystarczy dla jednego domu); jeśli w klastrze jest operator (np. CloudNativePG) lub baza zarządzana — aplikacja potrzebuje tylko `DATABASE_URL`. Kopie zapasowe: CronJob z `pg_dump` (przykład w `deploy/k8s/`).
+- **K8s** (chart Helm `deploy/helm/planer-przepisow`, instrukcja w `docs/DEPLOY.md`): Deployment aplikacji — 1 replika (kolejka importu działa w procesie, a PVC na pliki to zwykle ReadWriteOnce; więcej replik wymagałoby wolumenu RWX i przeniesienia kolejki do bazy — nie w v1), `strategy: Recreate`, PVC na `/data`, Secret z `DATABASE_URL`, ConfigMap ze zmiennymi, liveness/readiness `/api/health`, `securityContext: runAsNonRoot, readOnlyRootFilesystem` (zapisy tylko do `/data` i `/tmp` jako emptyDir). Ingress opcjonalny, domyślnie wyłączony (`ingress.enabled`). **PostgreSQL**: chart ma opcjonalny (`postgresql.enabled`) StatefulSet `postgres:18` z własnym PVC (wystarczy dla jednego domu); jeśli w klastrze jest operator (np. CloudNativePG) lub baza zarządzana — aplikacja potrzebuje tylko `DATABASE_URL`. Kopie zapasowe: opcjonalny CronJob z `pg_dump` (`backup.enabled`).
 - **Lokalnie na VM**: Docker nie jest zainstalowany — rozwój przez `make dev` (uvicorn + vite dev z proxy `/api`). PostgreSQL lokalnie: binaria z pakietu systemowego `postgresql-18` (instaluje właściciel), a klaster deweloperski uruchamiany **bez roota** przez `initdb`/`pg_ctl` w katalogu projektu (`.pgdata/`, w `.gitignore`, port 5433, tylko localhost) — `make db-up` / `make db-down`. Budowanie obrazu sprawdza CI (`docker build` w GitHub Actions); nie instalujemy Dockera na VM.
 
 ## 8. CI (GitHub Actions)
@@ -150,7 +150,8 @@ Jeden workflow `.github/workflows/ci.yml`, uruchamiany na każdym PR i push do `
 2. `frontend` — setup-node, `npm ci`, `npm run lint`, `npm run check` (svelte-check), `npm test`, `npm run build`;
 3. `e2e` — po (2): Playwright z `--with-deps` na runnerze GitHuba, kontener `postgres:18`, uruchamia zbudowaną aplikację z `IMPORT_BACKEND=fake`;
 4. `docker` — `docker build` (bez publikacji obrazu; rejestr i publikacja do decyzji później);
-5. `ci` — `needs: [backend, frontend, e2e, docker]`, zielony tylko gdy wszystkie są zielone.
+5. `helm` — `helm lint`, `helm template` (wariant domyślny i z włączonymi dodatkami) | `kubeconform -strict`, bez dostępu do klastra;
+6. `ci` — `needs: [backend, frontend, e2e, docker, helm]`, zielony tylko gdy wszystkie są zielone.
 
 ## 9. Lokalne środowisko na VM (stan sprawdzony 2026-10-21)
 

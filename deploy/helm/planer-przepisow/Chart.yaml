@@ -1,0 +1,6 @@
+apiVersion: v2
+name: planer-przepisow
+description: Planer przepisów — aplikacja (FastAPI + SPA), opcjonalny PostgreSQL i kopie zapasowe
+type: application
+version: 0.1.0
+appVersion: "latest"
