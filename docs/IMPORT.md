@@ -4,7 +4,8 @@ Backend wybiera implementację przez `IMPORT_BACKEND`: `ytdlp`, `disabled` albo
 `fake`. Wersja yt-dlp jest przypięta w `backend/pyproject.toml`; instalacja tylko
 w `backend/.venv` przez `make install`. Importer nie korzysta z kont, ciasteczek
 przeglądarki ani konfiguracji użytkownika. Przy brakującej lub uszkodzonej
-zależności `/api/config` zwraca `import_enabled: false`.
+zależności `/api/config` zwraca `import_enabled: false`. Pole `max_video_mb`
+podaje limit do komunikatu w formularzu.
 
 ## Kontrakt API
 
@@ -34,6 +35,9 @@ Skróty `fb.watch` są rozwijane w osobnym podprocesie z walidacją każdego
 przekierowania. Ogólny ekstraktor dowolnych stron jest wyłączony.
 
 ## Weryfikacja bez sieci
+
+`fake` kopiuje małe, wygenerowane lokalnie pliki MP4/JPEG z `importers/fixtures`,
+żeby e2e mogło sprawdzić odtwarzanie bez sieci.
 
 `make test` używa `fake` w testach API oraz lokalnego skryptu zamiast yt-dlp
 w testach podprocesu. Nie pobiera postów z serwisów społecznościowych.

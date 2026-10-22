@@ -30,7 +30,7 @@ test('blokuje Link, pustą nazwę, niepoprawne porcje i czas; zapisuje ręczny p
   render(RecipeForm, { onSave });
   expect(disabled('Zapisz przepis')).toBe(true);
   expect(
-    screen.getByText('Pobieranie z linku jest chwilowo niedostępne.'),
+    await screen.findByText('Pobieranie z linku jest chwilowo niedostępne.'),
   ).toBeTruthy();
   await fireEvent.click(screen.getByRole('tab', { name: 'Ręcznie' }));
   await fireEvent.input(screen.getByLabelText('Nazwa'), {

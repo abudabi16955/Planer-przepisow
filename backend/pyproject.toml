@@ -15,7 +15,7 @@ dev = ["pytest>=8,<10", "httpx>=0.28,<1", "ruff>=0.11,<1"]
 include = ["app*"]
 
 [tool.setuptools.package-data]
-app = ["migrations/*.sql"]
+app = ["migrations/*.sql", "importers/fixtures/*.mp4", "importers/fixtures/*.jpg"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
