@@ -48,6 +48,8 @@ class Storage:
                     self.remove(path)
                     connection.execute("DELETE FROM upload WHERE id = %s", (upload_id,))
             referenced = {row[0] for row in connection.execute("SELECT path FROM upload")}
+            for video, thumbnail in connection.execute("SELECT video, thumbnail FROM import_job"):
+                referenced.update(file["path"] for file in (video, thumbnail) if file)
             for path in (self.root / "tmp").iterdir():
                 relative = "tmp/" + path.name
                 if (
@@ -70,6 +72,8 @@ class FileChanges:
             temporary = f"tmp/{uuid4()}.deleted"
             self.storage.move(path, temporary)
             self.retired.append((path, temporary))
+            # A renamed old file must not look expired to the concurrent tmp sweeper.
+            os.utime(self.storage.path(temporary), None)
 
     def rollback(self):
         for original, temporary in reversed(self.retired):

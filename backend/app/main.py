@@ -1,7 +1,6 @@
 import asyncio
 import logging
 from contextlib import asynccontextmanager, suppress
-from importlib.util import find_spec
 from pathlib import Path
 from tempfile import TemporaryFile
 
@@ -14,7 +13,9 @@ from starlette.exceptions import HTTPException
 
 from app.config import Settings
 from app.db import migrate
+from app.importers.jobs import ImportJobs
 from app.routers.files import router as files_router
+from app.routers.imports import router as imports_router
 from app.routers.planner import router as planner_router
 from app.routers.products import router as products_router
 from app.routers.recipes import router as recipes_router
@@ -52,12 +53,17 @@ def create_app(settings: Settings | None = None, static_dir: Path | None = None)
             app.state.settings = settings
             app.state.storage = Storage(settings.data_dir)
 
+            jobs = ImportJobs(pool, app.state.storage, settings)
+            app.state.import_jobs = jobs
+
+            def cleanup_files():
+                jobs.cleanup()
+                app.state.storage.cleanup_tmp(pool)
+
             async def cleanup():
                 while True:
                     try:
-                        worker = asyncio.create_task(
-                            asyncio.to_thread(app.state.storage.cleanup_tmp, pool)
-                        )
+                        worker = asyncio.create_task(asyncio.to_thread(cleanup_files))
                         try:
                             await asyncio.shield(worker)
                         except asyncio.CancelledError:
@@ -75,6 +81,7 @@ def create_app(settings: Settings | None = None, static_dir: Path | None = None)
                 task.cancel()
                 with suppress(asyncio.CancelledError):
                     await task
+                await asyncio.to_thread(jobs.close)
 
     app = FastAPI(title="Planer przepisów", lifespan=lifespan)
 
@@ -92,11 +99,9 @@ def create_app(settings: Settings | None = None, static_dir: Path | None = None)
 
     @app.get("/api/config")
     def config():
-        return {
-            "import_enabled": settings.import_backend == "fake"
-            or (settings.import_backend == "ytdlp" and find_spec("yt_dlp") is not None)
-        }
+        return {"import_enabled": app.state.import_jobs.enabled}
 
+    app.include_router(imports_router)
     app.include_router(products_router)
     app.include_router(files_router)
     app.include_router(recipes_router)
