@@ -96,16 +96,24 @@ jobs:
         env:
           CACHE_HIT: ${{ steps.pw-cache.outputs.cache-hit }}
         run: |
+          # wolne lub zawieszone pobierania z mirrora apt: krótki timeout i ponowienia po stronie apt
+          printf 'Acquire::Retries "5";\nAcquire::http::Timeout "20";\nAcquire::https::Timeout "20";\n' \
+            | sudo tee /etc/apt/apt.conf.d/99-ci-retries > /dev/null
           if [ "$CACHE_HIT" = "true" ]; then
             args="install-deps chromium"
           else
             args="install --with-deps chromium"
           fi
           for attempt in 1 2 3; do
-            if timeout 5m npx playwright $args; then
+            if timeout --kill-after=10s 5m npx playwright $args; then
               exit 0
             fi
             echo "Próba $attempt nieudana lub przekroczono 5 min" >&2
+            # po ubitej próbie apt może nadal trzymać blokadę dpkg
+            sudo pkill -x apt-get || true
+            sudo pkill -x dpkg || true
+            sleep 3
+            sudo dpkg --configure -a || true
           done
           exit 1
       - run: npm --prefix frontend run test:e2e
