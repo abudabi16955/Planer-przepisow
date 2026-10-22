@@ -149,7 +149,7 @@ Jeden workflow `.github/workflows/ci.yml`, uruchamiany na każdym PR i push do `
 1. `backend` — kontener usługi `postgres:18` (services w GitHub Actions), setup-python, `pip install -e backend[dev]`, `ruff check`, `ruff format --check`, `pytest`;
 2. `frontend` — setup-node, `npm ci`, `npm run lint`, `npm run check` (svelte-check), `npm test`, `npm run build`;
 3. `e2e` — po (2): Playwright z `--with-deps` na runnerze GitHuba, kontener `postgres:18`, uruchamia zbudowaną aplikację z `IMPORT_BACKEND=fake`;
-4. `docker` — `docker build` (bez publikacji obrazu; rejestr i publikacja do decyzji później);
+4. `docker` — `docker build` (bez publikacji obrazu). Publikacja jest osobno: workflow `.github/workflows/image.yml` („Obraz”) buduje i wypycha obraz do GHCR (`ghcr.io/abudabi16955/planer-przepisow`) wyłącznie na żądanie (`workflow_dispatch`) lub po tagu `v*`, nigdy przy merge do `main` (opis: `docs/DEPLOY.md`);
 5. `ci` — `needs: [backend, frontend, e2e, docker]`, zielony tylko gdy wszystkie są zielone.
 
 ## 9. Lokalne środowisko na VM (stan sprawdzony 2026-10-21)
