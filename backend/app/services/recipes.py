@@ -104,17 +104,27 @@ def save_recipe(pool, storage, payload: RecipeCreate, recipe_id=None):
                     source_url=job["url"],
                     source_description=job["description"],
                 )
-                metadata = dict(job["video"])
-                source = metadata["path"]
-                if not source.startswith("tmp/"):
-                    raise HTTPException(422, "Wynik importu nie jest plikiem tymczasowym.")
-                destination = "videos/" + storage.path(source).name
-                job_files.append((source, destination))
-                storage.move(source, destination)
-                metadata["path"] = destination
-                files["video"] = metadata
+                for job_field, recipe_field, directory in (
+                    ("video", "video", "videos"),
+                    ("thumbnail", "photo", "thumbs"),
+                ):
+                    if not job[job_field]:
+                        continue
+                    metadata = dict(job[job_field])
+                    source = metadata["path"]
+                    if not source.startswith("tmp/"):
+                        raise HTTPException(422, "Wynik importu nie jest plikiem tymczasowym.")
+                    destination = directory + "/" + storage.path(source).name
+                    job_files.append((source, destination))
+                    if job_field == "thumbnail" and payload.photo_upload_id:
+                        changes.retire(source)
+                    else:
+                        storage.move(source, destination)
+                        metadata["path"] = destination
+                        files[recipe_field] = metadata
                 cursor.execute(
-                    "UPDATE import_job SET video = NULL WHERE id = %s", (payload.import_job_id,)
+                    "UPDATE import_job SET video = NULL, thumbnail = NULL WHERE id = %s",
+                    (payload.import_job_id,),
                 )
             elif payload.source_type == "link" and old and old["source_type"] == "link":
                 for field in ("source_platform", "source_url", "source_description"):
@@ -202,7 +212,9 @@ def save_recipe(pool, storage, payload: RecipeCreate, recipe_id=None):
                         storage.remove(source)
                         storage.remove(destination)
                     connection.execute(
-                        "UPDATE import_job SET video = NULL WHERE id = %s", (payload.import_job_id,)
+                        "UPDATE import_job SET video = NULL, thumbnail = NULL, status = 'failed', "
+                        "error_code = 'unavailable' WHERE id = %s",
+                        (payload.import_job_id,),
                     )
         discard_uploads(pool, storage, uploads, new_paths)
         raise

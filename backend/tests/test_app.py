@@ -89,7 +89,7 @@ def test_health_config_and_spa(clean_database, tmp_path):
 def test_import_availability(clean_database, tmp_path, backend, available, enabled):
     settings = Settings(database_url=clean_database, data_dir=tmp_path, import_backend=backend)
     with (
-        patch("app.main.find_spec", return_value=object() if available else None),
+        patch("app.importers.registry.find_spec", return_value=object() if available else None),
         TestClient(create_app(settings)) as client,
     ):
         assert client.get("/api/config").json() == {"import_enabled": enabled}
