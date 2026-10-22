@@ -3,6 +3,7 @@
   import RecipePage from './screens/RecipePage.svelte';
   import EditRecipe from './screens/EditRecipe.svelte';
   import Planner from './screens/Planner.svelte';
+  import Shopping from './screens/Shopping.svelte';
   import Recipes from './screens/Recipes.svelte';
   import RecipeForm from './lib/components/RecipeForm.svelte';
   import Navigation from './lib/components/Navigation.svelte';
@@ -37,6 +38,7 @@
       $route.page === 'add' ||
       $route.page === 'edit' ||
       $route.page === 'planner' ||
+      $route.page === 'shopping' ||
       (desktop && $route.page === 'recipe')}
   >
     {#if $route.page === 'recipes' || (desktop && $route.page === 'recipe')}
@@ -50,6 +52,8 @@
       {#key $route.id}<EditRecipe id={$route.id} />{/key}
     {:else if $route.page === 'planner'}
       <Planner {desktop} week={$route.week} />
+    {:else if $route.page === 'shopping'}
+      <Shopping {desktop} week={$route.week} />
     {:else if $route.page === 'add'}
       <RecipeForm />
     {:else}
