@@ -27,7 +27,7 @@
       qty: ingredient.quantity,
       unit: ingredient.unit || 'do smaku',
       unit_ok: true,
-      confirmed: true,
+      confirmed: false,
     };
     editing = null;
   }
@@ -167,7 +167,7 @@
               initialAmount={formatImportAmount(row.qty)}
               initialQuantity={row.qty}
               initialCreate={editing.create}
-              onadd={(ingredient) => accept(index, ingredient)}
+              onselect={(ingredient) => accept(index, ingredient)}
             />
           {/key}
           <button

@@ -33,6 +33,12 @@ test('WWW → przegląd składników → zapis → Oryginalna strona', async ({ 
     await expect(page.getByText('Sprawdź ilości. <script>window.evil=true</script>', { exact: true })).toBeVisible();
     const save = page.getByRole('button', { name: 'Zapisz przepis', exact: true });
     await expect(save).toBeDisabled();
+    const selectedRow = page.getByRole('group', { name: 'Składnik 1', exact: true });
+    await selectedRow.getByRole('button', { name: 'Wybierz produkt: Jajka', exact: true }).click();
+    await selectedRow.getByRole('option').filter({ hasText: 'Jajka' }).click();
+    await expect(selectedRow.getByRole('button', { name: 'Zatwierdź składnik: Jajka', exact: true })).toBeVisible();
+    await expect(selectedRow.getByText('sprawdź', { exact: true })).toBeVisible();
+    await selectedRow.getByRole('button', { name: 'Zatwierdź składnik: Jajka', exact: true }).click();
     const fuzzy = page.getByRole('group', { name: 'Składnik 2', exact: true });
     await fuzzy.getByRole('button', { name: 'ml: Mleko 2%', exact: true }).click();
     await fuzzy.getByRole('button', { name: 'Zatwierdź składnik' }).click();
@@ -41,7 +47,9 @@ test('WWW → przegląd składników → zapis → Oryginalna strona', async ({ 
     const dialog = page.getByRole('dialog', { name: 'Nowy produkt' });
     await expect(dialog.getByLabel('Nazwa produktu')).toHaveValue(productName);
     await dialog.getByRole('button', { name: 'Zapisz produkt', exact: true }).click();
-    await newRow.getByRole('button', { name: 'Dodaj składnik', exact: true }).click();
+    await expect(newRow.getByText('sprawdź', { exact: true })).toBeVisible();
+    await expect(save).toBeDisabled();
+    await newRow.getByRole('button', { name: `Zatwierdź składnik: ${productName}`, exact: true }).click();
     await page.getByRole('group', { name: 'Składnik 4', exact: true }).getByRole('button', { name: 'Pomiń składnik: Nieznany dodatek', exact: true }).click();
     await expect(save).toBeEnabled();
     const created = page.waitForResponse(response => response.url().endsWith('/api/recipes') && response.request().method() === 'POST');

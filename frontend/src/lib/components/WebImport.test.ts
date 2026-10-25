@@ -113,10 +113,13 @@ test('zachowuje wpisaną nazwę i pozwala dopasować nieznany produkt istniejąc
     target: { value: 'Produkt' },
   });
   await fireEvent.click(row.getByRole('option', { name: /Produkt/ }));
-  await fireEvent.click(row.getByRole('button', { name: 'Dodaj składnik' }));
+  expect(saveButton().disabled).toBe(true);
+  await fireEvent.click(
+    row.getByRole('button', { name: 'Zatwierdź składnik: Produkt' }),
+  );
   expect(saveButton().disabled).toBe(false);
 });
-test('nowy produkt ma nazwę i jednostkę ze szkicu, wraca do zatwierdzonego składnika', async () => {
+test('nowy produkt ma nazwę i jednostkę ze szkicu, wymaga osobnego zatwierdzenia', async () => {
   render(RecipeForm, { onSave: vi.fn() });
   await load();
   const row = within(screen.getByRole('group', { name: 'Składnik 2' }));
@@ -131,9 +134,12 @@ test('nowy produkt ma nazwę i jednostkę ze szkicu, wraca do zatwierdzonego sk�
     dialog.getByRole('button', { name: 'szt.' }).getAttribute('aria-pressed'),
   ).toBe('true');
   await fireEvent.click(dialog.getByRole('button', { name: 'Zapisz produkt' }));
-  await fireEvent.click(
-    await row.findByRole('button', { name: 'Dodaj składnik' }),
-  );
+  const confirm = await row.findByRole('button', {
+    name: 'Zatwierdź składnik: Nieznany',
+  });
+  expect(saveButton().disabled).toBe(true);
+  expect(row.getByText('sprawdź')).toBeTruthy();
+  await fireEvent.click(confirm);
   expect(saveButton().disabled).toBe(false);
 });
 test('fuzzy i niezgodna jednostka wymagają poprawienia i zatwierdzenia', async () => {
@@ -308,8 +314,13 @@ test('wybór produktu pokazuje krótki ułamek i zachowuje dokładną ilość be
     target: { value: 'Produkt' },
   });
   await fireEvent.click(row.getByRole('option', { name: /Produkt/ }));
-  expect((row.getByLabelText('Ilość') as HTMLInputElement).value).toBe('0,33');
-  await fireEvent.click(row.getByRole('button', { name: 'Dodaj składnik' }));
+  expect((row.getByLabelText('Ilość: Produkt') as HTMLInputElement).value).toBe(
+    '0,33',
+  );
+  expect(saveButton().disabled).toBe(true);
+  await fireEvent.click(
+    row.getByRole('button', { name: 'Zatwierdź składnik: Produkt' }),
+  );
   await fireEvent.click(saveButton());
   await waitFor(() =>
     expect(onSave).toHaveBeenCalledWith(
