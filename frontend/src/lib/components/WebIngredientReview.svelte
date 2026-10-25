@@ -31,6 +31,35 @@
     };
     editing = null;
   }
+  function updateImportRowsForProduct(updated: CatalogueProduct) {
+    rows = rows.map((row, i) => {
+      if (row.product_id === updated.id && row.unit_ok === false) {
+        if (updated.units.includes(row.unit) || row.unit === 'do smaku') {
+          delete amounts[i];
+          return {
+            ...row,
+            unit_ok: true,
+          };
+        }
+        if (row.quantity_variants && row.quantity_variants.length > 0) {
+          const match = row.quantity_variants.find(
+            (v: { qty: number | null; unit: string }) =>
+              updated.units.includes(v.unit),
+          );
+          if (match) {
+            delete amounts[i];
+            return {
+              ...row,
+              unit: match.unit,
+              qty: match.qty,
+              unit_ok: true,
+            };
+          }
+        }
+      }
+      return row;
+    });
+  }
 </script>
 
 <section aria-label="Przegląd składników">
@@ -157,6 +186,7 @@
             bind:products
             initialEdit={product}
             editorOnly
+            onsave={(updated) => updateImportRowsForProduct(updated)}
             onclose={() => (editingProduct = null)}
           />
         {/if}

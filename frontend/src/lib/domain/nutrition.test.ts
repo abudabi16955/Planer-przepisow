@@ -282,3 +282,37 @@ test('bez makro nie ma proporcji ani dzielenia przez zero', () => {
   expect(energyProportions(null)).toBeNull();
   expect(energyProportions({ protein: 0, carbs: 0, fat: 0 })).toBeNull();
 });
+
+test('kryterium 8: papryka 1 łyżka = 10 g liczy kcal; bez przelicznika łyżka pomijana w kcal', () => {
+  const paprikaWithoutConv: Product = {
+    id: 'papryka',
+    nutrition_basis: 'g',
+    kcal: 282,
+    protein: 14.1,
+    carbs: 54,
+    fat: 12.9,
+    unit_conversions: null,
+  };
+  const paprikaWithConv: Product = {
+    ...paprikaWithoutConv,
+    unit_conversions: { łyżka: 10 },
+  };
+  const recipeWithPaprika: RecipeNutrition = {
+    servings: 1,
+    kcal: null,
+    protein: null,
+    carbs: null,
+    fat: null,
+    ingredients: [{ product_id: 'papryka', quantity: 2, unit: 'łyżka' }],
+  };
+
+  expect(quantityInBasis(paprikaWithoutConv, 2, 'łyżka')).toBeNull();
+  expect(recipeNutrition(recipeWithPaprika, [paprikaWithoutConv])).toBeNull();
+
+  expect(quantityInBasis(paprikaWithConv, 2, 'łyżka')).toBe(20);
+  const result = recipeNutrition(recipeWithPaprika, [paprikaWithConv])!;
+  expect(result.kcal).toBeCloseTo(56.4);
+  expect(result.protein).toBeCloseTo(2.82);
+  expect(result.carbs).toBeCloseTo(10.8);
+  expect(result.fat).toBeCloseTo(2.58);
+});

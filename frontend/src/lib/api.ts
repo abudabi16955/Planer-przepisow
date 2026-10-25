@@ -71,12 +71,23 @@ export async function post<T>(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
-  if (!response.ok)
+  if (!response.ok) {
+    let detail: string | undefined;
+    try {
+      const errBody = await response.json();
+      if (typeof errBody?.detail === 'string') {
+        detail = errBody.detail;
+      }
+    } catch {
+      // ignore
+    }
+    if (detail) throw new Error(detail);
     throw new Error(
       response.status === 409
         ? 'Produkt o tej nazwie już istnieje.'
         : 'Nie udało się zapisać. Spróbuj ponownie.',
     );
+  }
   return response.json() as Promise<T>;
 }
 

@@ -138,7 +138,7 @@ Adresy (URL) ekranów: `/` (przepisy), `/przepis/:id`, `/dodaj`, `/planer`, `/za
 ## 5. Model danych (logiczny)
 
 ### 5.1 Produkt
-`id`, `name` (unikalna, bez wielkości liter), `units[]` (uporządkowane, pierwsza domyślna; dozwolone: g, kg, ml, l, szt., łyżeczka, łyżka, szklanka, szczypta, ząbek, puszka), `nutrition_basis` (g | ml | szt. | brak), `kcal`, `protein`, `carbs`, `fat` (na 100 g / 100 ml / 1 szt., opcjonalne), `unit_conversions` (opcjonalna mapa: jednostka → ile to jednostek podstawy, np. Pomidor na 100 g: `{"szt.": 150}`, Mąka: `{"szklanka": 160, "łyżka": 10}`, Czosnek: `{"ząbek": 5}`; wypełniana w bazie startowej, formularz nowego produktu jej nie ma — jak w prototypie), `is_custom`, `created_at`.
+`id`, `name` (unikalna, bez wielkości liter), `units[]` (uporządkowane, pierwsza domyślna, min. 1 jednostka; dozwolone: g, kg, ml, l, szt., łyżeczka, łyżka, szklanka, szczypta, ząbek, puszka), `nutrition_basis` (g | ml | szt. | brak), `kcal`, `protein`, `carbs`, `fat` (na 100 g / 100 ml / 1 szt., opcjonalne), `unit_conversions` (opcjonalna mapa jednostka → liczba > 0 jednostek podstawy, np. Pomidor na 100 g: `{"szt.": 150}`, Mąka: `{"szklanka": 160, "łyżka": 10}`, Czosnek: `{"ząbek": 5}`; edytowalna w formularzu produktu z walidacją liczb dodatnich), `is_custom`, `created_at`.
 Startowa baza: 29 produktów z `catalog()` prototypu (T:889) + wartości odżywcze z publicznych tabel (do przygotowania przez Researchera, zatwierdzane przeze mnie).
 
 ### 5.2 Przepis
@@ -350,30 +350,44 @@ pozostaje osobnym zadaniem #62.
 
 Po wybraniu produktu w wyszukiwarce składników i przy dopasowanym wierszu
 przeglądu importu dostępny jest przycisk „Edytuj produkt”. Ten sam formularz co
-„Nowy produkt” otwiera się z wypełnioną nazwą, podstawą i wartościami odżywczymi.
-Formularz „Nowy produkt” i „Edytuj produkt” to modal pop-up wyśrodkowany na ekranie
-z przyciemnionym tłem, na telefonie i na laptopie (`role="dialog"`, `aria-modal="true"`,
-pułapka fokusu na obu szerokościach, blokada przewijania tła). Przyciski:
-„Zapisz zmiany” / „Zapisz produkt” oraz „Anuluj” (wyraźny przycisk drugorzędny
-na dole obok przycisku zapisu, min. 44 px wysokości) oraz ikona ✕ w nagłówku
-(`aria-label="Zamknij"`). Przyciski „Nie ma na liście? Dodaj „…” jako nowy produkt”
-i „Edytuj produkt” mają styl przycisku drugorzędnego z obramowaniem w kolorze
-akcentu. Notka: „Zmiana dotyczy wszystkich przepisów z tym produktem.”.
-Jednostki i przeliczniki nie są edytowalne; nie usuwamy produktów.
+„Nowy produkt” otwiera się z wypełnioną nazwą, jednostkami, przelicznikami,
+podstawą i wartościami odżywczymi. Formularz „Nowy produkt” i „Edytuj produkt” to
+modal pop-up wyśrodkowany na ekranie z przyciemnionym tłem, na telefonie i na
+laptopie (`role="dialog"`, `aria-modal="true"`, pułapka fokusu na obu szerokościach,
+blokada przewijania tła). Przyciski: „Zapisz zmiany” / „Zapisz produkt” oraz
+„Anuluj” (wyraźny przycisk drugorzędny na dole obok przycisku zapisu, min. 44 px
+wysokości) oraz ikona ✕ w nagłówku (`aria-label="Zamknij"`). Przyciski „Nie ma na
+liście? Dodaj „…” jako nowy produkt” i „Edytuj produkt” mają styl przycisku
+drugorzędnego z obramowaniem w kolorze akcentu. Notka: „Zmiana dotyczy wszystkich
+przepisów z tym produktem.”. Nie usuwamy produktów z bazy.
 
-Zmieniać można nazwę, podstawę (100 g, 100 ml, 1 szt. lub brak) i kcal/białko/
-węgle/tłuszcz. Wybranie „brak” czyści wartości odżywcze. Duplikat nazwy blokuje
-zapis (bez względu na wielkość liter, z pominięciem własnego id). Serwer także
-odrzuca duplikat kodem 409: „Produkt o tej nazwie już istnieje.”. Zapis aktualizuje
-produkt w bieżącej liście `products` odpowiedzią serwera; nazwa i podpowiedzi
-makro odświeżają się od razu. Toast: „Zapisano produkt: <nazwa>”. Ilość składnika,
-jego jednostka i stan zatwierdzenia pozostają bez zmian.
+Zmieniać można nazwę, listę dozwolonych jednostek (min. 1 jednostka wymagana;
+pierwsza wybrana jest domyślną), przeliczniki jednostek, podstawę (100 g, 100 ml,
+1 szt. lub brak) i kcal/białko/węgle/tłuszcz. Wybranie „brak” podstawy czyści
+wartości odżywcze i przeliczniki. Dla każdej jednostki różnej od podstawy (i innej
+niż automatycznie przeliczalna: kg↔g, l↔ml oraz dla ml także łyżka/łyżeczka/szklanka)
+dostępne jest opcjonalne pole przelicznika: `1 {jednostka} = [____] {podstawa}`
+z dopiskiem: „Bez przelicznika ta jednostka nie wliczy się do kalorii.”.
 
-`PUT /api/products/{id}` edytuje wyłącznie name, nutrition_basis, kcal, protein,
-carbs i fat, z walidacją jak przy tworzeniu; 404 oznacza nieznane id. Zmiana samej
-nazwy zachowuje pominięte wartości. Jawne null czyści pole, o ile po zmianie
-nie pozostają wartości bez podstawy. Jednostki/przeliczniki w payloadzie są
-odrzucane; nie zmieniają się też id, is_custom i created_at.
+Duplikat nazwy blokuje zapis (bez względu na wielkość liter, z pominięciem własnego
+id). Serwer odrzuca duplikat kodem 409: „Produkt o tej nazwie już istnieje.”.
+Przy próbie usunięcia jednostki, która jest już używana w którymkolwiek przepisie,
+serwer zwraca błąd 409: „Jednostka „{u}” jest używana w przepisach ({count}).
+Najpierw zmień je w przepisach.”. W razie błędu 409 modal pozostaje otwarty,
+a treść błędu z serwera wyświetla się w formularzu w roli alertu.
+
+Po zapisaniu zmian w produkcie:
+- wiersze importu powiązane z tym produktem, które miały błąd jednostki (`unit_ok: false`),
+  automatycznie sprawdzają, czy ich jednostka lub warianty pasują do nowych jednostek produktu;
+  w razie dopasowania wiersz przechodzi w `unit_ok: true`, ustawia pasującą jednostkę i ilość,
+  zachowując status `confirmed` bez przeładowywania strony,
+- bieżąca lista `products` odświeża się odpowiedzią serwera,
+- nazwa i podpowiedzi makro w formularzu przepisu przeliczają się natychmiast,
+- toast potwierdza: „Zapisano produkt: <nazwa>”.
+
+`PUT /api/products/{id}` przyjmuje name, units, unit_conversions, nutrition_basis,
+kcal, protein, carbs i fat, z walidacją spójności jednostek i liczb dodatnich.
+404 oznacza nieznane id. Nie zmieniają się id, is_custom i created_at.
 
 Makro liczone ze składników jest wyliczane z bieżącego katalogu produktów przy
 odczycie na froncie. Nie zapisujemy kopii obliczeń. Jawne wartości na porcję

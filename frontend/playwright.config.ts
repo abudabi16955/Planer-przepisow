@@ -13,5 +13,8 @@ export default defineConfig({
       'backend/.venv/bin/uvicorn app.main:app --app-dir backend --host 127.0.0.1',
     url: 'http://127.0.0.1:8000/api/health',
     reuseExistingServer: false,
+    env: {
+      IMPORT_BACKEND: process.env.IMPORT_BACKEND || 'fake',
+    },
   },
 });

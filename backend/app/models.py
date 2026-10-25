@@ -21,12 +21,25 @@ NutritionValue = Annotated[float, Field(ge=0, allow_inf_nan=False, strict=True)]
 class ProductEdit(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, strict=True)]
+    name: (
+        Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, strict=True)] | None
+    ) = None
+    units: Annotated[list[Unit], Field(min_length=1)] | None = None
     nutrition_basis: NutritionBasis | None = None
     kcal: NutritionValue | None = None
     protein: NutritionValue | None = None
     carbs: NutritionValue | None = None
     fat: NutritionValue | None = None
+    unit_conversions: (
+        dict[Unit, Annotated[float, Field(gt=0, allow_inf_nan=False, strict=True)]] | None
+    ) = None
+
+    @field_validator("units")
+    @classmethod
+    def unique_units(cls, units):
+        if units is not None and len(set(units)) != len(units):
+            raise ValueError("Jednostki nie mogą się powtarzać.")
+        return units
 
     @model_validator(mode="after")
     def nutrition_requires_basis(self):
@@ -38,19 +51,31 @@ class ProductEdit(BaseModel):
 
 
 class ProductCreate(ProductEdit):
+    name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, strict=True)]
     units: Annotated[list[Unit], Field(min_length=1)]
+    unit_conversions: dict[
+        Unit, Annotated[float, Field(gt=0, allow_inf_nan=False, strict=True)]
+    ] = Field(default_factory=dict)
 
-    @field_validator("units")
-    @classmethod
-    def unique_units(cls, units):
-        if len(set(units)) != len(units):
-            raise ValueError("Jednostki nie mogą się powtarzać.")
-        return units
+    @model_validator(mode="after")
+    def validate_create_conversions(self):
+        if self.unit_conversions:
+            if self.nutrition_basis is None:
+                raise ValueError("Przeliczniki wymagają wybranej podstawy wartości odżywczych.")
+            for unit in self.unit_conversions:
+                if unit not in self.units:
+                    raise ValueError(
+                        f"Jednostka przelicznika {unit} musi znajdować się na liście jednostek."
+                    )
+                if unit == self.nutrition_basis:
+                    raise ValueError(
+                        f"Jednostka przelicznika nie może być równa podstawie ({self.nutrition_basis})."
+                    )
+        return self
 
 
 class Product(ProductCreate):
     id: UUID
-    unit_conversions: dict[str, float]
     is_custom: bool
     created_at: datetime
 

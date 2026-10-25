@@ -240,13 +240,16 @@ def test_edit_own_name_and_case_keeps_nutrition(client):
     [
         {"name": ""},
         {"name": 1},
-        {"name": "Nowy", "units": ["g"]},
-        {"name": "Nowy", "unit_conversions": {}},
+        {"name": "Nowy", "units": []},
+        {"name": "Nowy", "units": ["g", "g"]},
+        {"name": "Nowy", "units": ["nieznana"]},
+        {"name": "Nowy", "unit_conversions": {"łyżka": 0}},
+        {"name": "Nowy", "unit_conversions": {"łyżka": -1}},
         {"name": "Nowy", "kcal": -1},
         {"name": "Nowy", "nutrition_basis": "kg"},
         {"name": "Nowy", "protein": "1"},
         {"name": "Nowy", "fat": True},
-        {"name": "Nowy", "nutrition_basis": None},
+        {"name": "Nowy", "nutrition_basis": None, "kcal": 100},
     ],
 )
 def test_edit_validation_and_readonly_unit_fields(client, values):
@@ -270,3 +273,128 @@ def test_edit_can_clear_optional_nutrition(client):
     )
     assert response.status_code == 200
     assert response.json()["kcal"] is None and response.json()["nutrition_basis"] is None
+
+
+def test_edit_product_add_units_and_reorder(client):
+    czosnek = next(row for row in client.get("/api/products").json() if row["name"] == "Czosnek")
+    assert czosnek["units"] == ["ząbek", "g"]
+
+    # Zmiana kolejności i dodanie nowej jednostki
+    response = client.put(
+        f"/api/products/{czosnek['id']}",
+        json={"units": ["g", "łyżeczka", "ząbek"]},
+    )
+    assert response.status_code == 200
+    updated = response.json()
+    assert updated["units"] == ["g", "łyżeczka", "ząbek"]
+    assert updated["unit_conversions"]["ząbek"] == 5
+    # metadata and unchanged fields preserved
+    assert updated["name"] == "Czosnek"
+    assert updated["nutrition_basis"] == "g"
+
+
+def test_edit_product_remove_unused_unit_removes_conversion(client):
+    mleko = next(row for row in client.get("/api/products").json() if row["name"] == "Mleko 2%")
+    assert "szklanka" in mleko["units"]
+    assert mleko["unit_conversions"].get("szklanka") == 250
+
+    # Usunięcie jednostki 'szklanka', która nie jest używana w żadnym przepisie
+    response = client.put(
+        f"/api/products/{mleko['id']}",
+        json={"units": ["ml", "l", "łyżka"]},
+    )
+    assert response.status_code == 200
+    updated = response.json()
+    assert updated["units"] == ["ml", "l", "łyżka"]
+    assert "szklanka" not in updated["unit_conversions"]
+    assert updated["unit_conversions"]["łyżka"] == 15
+
+
+def test_edit_product_remove_used_unit_returns_409(client):
+    czosnek = next(row for row in client.get("/api/products").json() if row["name"] == "Czosnek")
+    # Stwórz 2 przepisy używające czosnku w jednostce 'ząbek'
+    for i in range(2):
+        res = client.post(
+            "/api/recipes",
+            json={
+                "title": f"Danie z czosnkiem {i}",
+                "category": "obiad",
+                "servings": 2,
+                "ingredients": [{"product_id": czosnek["id"], "quantity": 1, "unit": "ząbek"}],
+            },
+        )
+        assert res.status_code == 201
+
+    # Próba usunięcia 'ząbek' z jednostek czosnku powinna zwrócić 409
+    response = client.put(
+        f"/api/products/{czosnek['id']}",
+        json={"units": ["g"]},
+    )
+    assert response.status_code == 409
+    assert response.json()["detail"] == (
+        "Jednostka „ząbek” jest używana w przepisach (2). Najpierw zmień je w przepisach."
+    )
+    # Produkt pozostał niezmieniony
+    current = next(row for row in client.get("/api/products").json() if row["id"] == czosnek["id"])
+    assert current["units"] == czosnek["units"]
+
+
+@pytest.mark.parametrize(
+    "invalid_conversions",
+    [
+        {"łyżka": 0},
+        {"łyżka": -5},
+        {"szklanka": 200},  # 'szklanka' nie ma w units
+        {"g": 10},  # 'g' jest podstawą wartości odżywczych (nutrition_basis)
+    ],
+)
+def test_edit_product_invalid_conversions_returns_422(client, invalid_conversions):
+    papryka = next(
+        row for row in client.get("/api/products").json() if row["name"] == "Papryka wędzona"
+    )
+    response = client.put(
+        f"/api/products/{papryka['id']}",
+        json={
+            "units": ["g", "łyżeczka"],
+            "unit_conversions": invalid_conversions,
+        },
+    )
+    assert response.status_code == 422
+
+
+def test_edit_product_conversions_without_basis_returns_422(client):
+    product = next(row for row in client.get("/api/products").json() if row["name"] == "Sól")
+    response = client.put(
+        f"/api/products/{product['id']}",
+        json={
+            "nutrition_basis": None,
+            "kcal": None,
+            "protein": None,
+            "carbs": None,
+            "fat": None,
+            "unit_conversions": {"łyżeczka": 5},
+        },
+    )
+    assert response.status_code == 422
+
+
+def test_create_product_with_conversions_and_validation(client):
+    payload = {
+        "name": "Kmin rzymski",
+        "units": ["g", "łyżeczka", "łyżka"],
+        "nutrition_basis": "g",
+        "kcal": 375,
+        "protein": 18,
+        "carbs": 44,
+        "fat": 22,
+        "unit_conversions": {"łyżeczka": 3, "łyżka": 9},
+    }
+    response = client.post("/api/products", json=payload)
+    assert response.status_code == 201
+    created = response.json()
+    assert created["units"] == ["g", "łyżeczka", "łyżka"]
+    assert created["unit_conversions"] == {"łyżeczka": 3, "łyżka": 9}
+
+    # Błędny przelicznik przy tworzeniu (jednostka nie w units)
+    bad_payload = {**payload, "name": "Inny kmin", "unit_conversions": {"szklanka": 100}}
+    assert client.post("/api/products", json=bad_payload).status_code == 422
