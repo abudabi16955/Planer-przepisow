@@ -13,6 +13,7 @@
     editorOnly = false,
     onclose = () => {},
     onadd,
+    onselect,
     products = $bindable<CatalogueProduct[]>([]),
     ingredients = $bindable<
       { product_id: string; quantity: number | null; unit: string }[]
@@ -32,6 +33,11 @@
     initialEdit?: CatalogueProduct;
     editorOnly?: boolean;
     onclose?: () => void;
+    onselect?: (ingredient: {
+      product_id: string;
+      quantity: number | null;
+      unit: string;
+    }) => void;
     onadd?: (ingredient: {
       product_id: string;
       quantity: number | null;
@@ -159,6 +165,16 @@
     amount = initialAmount;
     amountChanged = false;
     expanded = false;
+    onselect?.({
+      product_id: product.id,
+      quantity:
+        unit === ''
+          ? null
+          : initialQuantity !== undefined
+            ? initialQuantity
+            : number(amount),
+      unit,
+    });
   }
   function add() {
     if (!selected || !canAdd) return;

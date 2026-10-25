@@ -335,7 +335,11 @@ w kolorze `--warning`. Stan jest podany tekstem i opisem ARIA, nie tylko kolorem
 
 „Zatwierdź składnik” jest przyciskiem głównym (tło `--accent`, biały tekst);
 wybór produktu, usunięcie i pominięcie pozostają drugorzędne. „Sprawdź” znika
-po zatwierdzeniu albo po wyborze produktu, również dla pierwotnego fuzzy.
+po jawnym zatwierdzeniu. Wybór lub dodanie produktu pozostawia `confirmed=false`,
+również przy zmianie pierwotnego dopasowania exact albo fuzzy. Kliknięcie produktu
+w wyszukiwarce od razu wraca do wiersza przeglądu z przyciskiem „Zatwierdź składnik”,
+bez pośredniego „Dodaj składnik”. Nowy produkt także wymaga zatwierdzenia wiersza.
+Do tego czasu licznik i blokada zapisu wskazują nierozstrzygnięty składnik.
 „Cofnij zatwierdzenie” ustawia `confirmed=false` i ponownie blokuje zapis do
 kolejnego zatwierdzenia; działa także dla dopasowań exact. Edycja ilości lub
 jednostki nie cofa flagi zatwierdzenia; niepoprawna wartość nadal blokuje zapis.

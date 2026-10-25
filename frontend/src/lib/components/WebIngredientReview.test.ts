@@ -114,24 +114,37 @@ test('cofnięcie exact ponownie blokuje zapis, zatwierdzenie odblokowuje; edycja
   expect(save().disabled).toBe(false);
 });
 
-test('wybranie produktu usuwa sprawdź mimo pierwotnego fuzzy', async () => {
-  draft.ingredients = [{ ...draft.ingredients[0], match: 'fuzzy' }];
-  await load();
-  expect(screen.getByText('Zatwierdzone: 0 z 1')).toBeTruthy();
-  await fireEvent.click(
-    within(row(1)).getByRole('button', { name: 'Wybierz produkt: Produkt' }),
-  );
-  await fireEvent.click(
-    within(row(1)).getByRole('option', { name: /Produkt/ }),
-  );
-  await fireEvent.click(
-    within(row(1)).getByRole('button', { name: 'Dodaj składnik' }),
-  );
-  expect(within(row(1)).queryByText('sprawdź')).toBeNull();
-  expect(within(row(1)).getByText('✓ zatwierdzony')).toBeTruthy();
-  expect(screen.getByText('Zatwierdzone: 1 z 1')).toBeTruthy();
-  expect(save().disabled).toBe(false);
-});
+test.each(['exact', 'fuzzy', 'none'] as const)(
+  'wybór %s wymaga jawnego zatwierdzenia i zachowuje przycisk',
+  async (match) => {
+    draft.ingredients = [
+      {
+        ...draft.ingredients[0],
+        match,
+        product_id: match === 'none' ? null : 'product',
+      },
+    ];
+    await load();
+    await fireEvent.click(
+      within(row(1)).getByRole('button', { name: 'Wybierz produkt: Produkt' }),
+    );
+    await fireEvent.click(
+      within(row(1)).getByRole('option', { name: /Produkt/ }),
+    );
+    expect(within(row(1)).getByText('sprawdź')).toBeTruthy();
+    expect(screen.getByText('Zatwierdzone: 0 z 1')).toBeTruthy();
+    expect(save().disabled).toBe(true);
+    await fireEvent.click(
+      within(row(1)).getByRole('button', {
+        name: 'Zatwierdź składnik: Produkt',
+      }),
+    );
+    expect(within(row(1)).queryByText('sprawdź')).toBeNull();
+    expect(within(row(1)).getByText('✓ zatwierdzony')).toBeTruthy();
+    expect(screen.getByText('Zatwierdzone: 1 z 1')).toBeTruthy();
+    expect(save().disabled).toBe(false);
+  },
+);
 
 test('licznik wyklucza pominięte i usunięte wiersze z obu liczb', async () => {
   await load();
