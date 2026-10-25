@@ -251,6 +251,7 @@ def test_disabled_and_missing_dependency_do_not_break_application(clean_database
         ):
             assert client.get("/api/config").json() == {
                 "import_enabled": False,
+                "web_import_enabled": True,
                 "max_video_mb": 300,
             }
             assert client.post("/api/imports", json={"url": URL}).status_code == 503
@@ -354,7 +355,11 @@ def test_broken_dependency_disables_import(clean_database, tmp_path):
             )
         ) as client,
     ):
-        assert client.get("/api/config").json() == {"import_enabled": False, "max_video_mb": 300}
+        assert client.get("/api/config").json() == {
+            "import_enabled": False,
+            "max_video_mb": 300,
+            "web_import_enabled": True,
+        }
         assert client.get("/api/products").status_code == 200
 
 

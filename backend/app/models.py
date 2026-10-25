@@ -72,7 +72,7 @@ class RecipeCreate(BaseModel):
     time_min: Annotated[int, Field(gt=0, strict=True)] | None = None
     servings: Annotated[int, Field(ge=1, le=50, strict=True)]
     source_type: Literal["manual", "pdf", "link"] = "manual"
-    source_platform: Literal["instagram", "facebook"] | None = None
+    source_platform: Literal["instagram", "facebook", "www"] | None = None
     source_url: str | None = None
     source_description: str | None = None
     kcal: NutritionValue | None = None
@@ -84,6 +84,7 @@ class RecipeCreate(BaseModel):
     pdf_upload_id: UUID | None = None
     photo_upload_id: UUID | None = None
     import_job_id: UUID | None = None
+    web_photo_url: str | None = None
 
     @field_validator("steps")
     @classmethod
@@ -92,6 +93,22 @@ class RecipeCreate(BaseModel):
 
     @model_validator(mode="after")
     def source_matches_attachment(self):
+        if self.source_platform == "www" or self.web_photo_url:
+            from app.importers.web.fetch import WebImportError, parse_url
+
+            if (
+                self.source_type != "link"
+                or self.source_platform != "www"
+                or not self.source_url
+                or self.import_job_id
+            ):
+                raise ValueError("Strona WWW wymaga poprawnego źródła.")
+            try:
+                parse_url(self.source_url)
+                if self.web_photo_url:
+                    parse_url(self.web_photo_url)
+            except WebImportError as error:
+                raise ValueError("Niepoprawny adres strony lub zdjęcia.") from error
         if self.pdf_upload_id and self.source_type != "pdf":
             raise ValueError("PDF wymaga źródła PDF.")
         if self.import_job_id and self.source_type != "link":

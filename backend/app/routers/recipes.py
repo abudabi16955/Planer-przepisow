@@ -2,8 +2,10 @@ from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Request, Response
 
+from app.importers.web.fetch import WebImportError
+from app.importers.web.photo import save_with_photo
 from app.models import RecipeCreate
-from app.services.recipes import delete_recipe, get_recipe, save_recipe
+from app.services.recipes import delete_recipe, get_recipe
 
 router = APIRouter(prefix="/api/recipes", tags=["recipes"])
 
@@ -24,7 +26,11 @@ def read_recipe(recipe_id: UUID, request: Request):
 @router.post("", status_code=201)
 def add_recipe(payload: RecipeCreate, request: Request):
     try:
-        return save_recipe(request.app.state.pool, request.app.state.storage, payload)
+        return save_with_photo(
+            request.app.state.pool, request.app.state.storage, request.app.state.settings, payload
+        )
+    except WebImportError as error:
+        raise HTTPException(422, detail={"code": error.code}) from error
     except OSError as error:
         raise HTTPException(500, "Nie udało się zapisać pliku.") from error
 
@@ -32,7 +38,15 @@ def add_recipe(payload: RecipeCreate, request: Request):
 @router.put("/{recipe_id}")
 def update_recipe(recipe_id: UUID, payload: RecipeCreate, request: Request):
     try:
-        return save_recipe(request.app.state.pool, request.app.state.storage, payload, recipe_id)
+        return save_with_photo(
+            request.app.state.pool,
+            request.app.state.storage,
+            request.app.state.settings,
+            payload,
+            recipe_id,
+        )
+    except WebImportError as error:
+        raise HTTPException(422, detail={"code": error.code}) from error
     except OSError as error:
         raise HTTPException(500, "Nie udało się zapisać pliku.") from error
 

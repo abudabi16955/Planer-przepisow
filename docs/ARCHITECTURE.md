@@ -84,6 +84,7 @@ Odrzucone: Next.js/React (cięższe, SSR niepotrzebny), Celery/Redis (kolejka w 
 | `GET /api/products` · `POST /api/products` | baza produktów; 409 przy duplikacie nazwy |
 | `GET /api/recipes` · `GET /api/recipes/{id}` · `POST /api/recipes` · `PUT /api/recipes/{id}` · `DELETE /api/recipes/{id}` | przepisy (POST/PUT: JSON z polami + identyfikatory wcześniej wgranych plików / zadania importu; DELETE usuwa też wpisy planera i pliki) |
 | `POST /api/uploads` (multipart) | wgranie PDF lub zdjęcia → `upload_id`; walidacja typu i rozmiaru |
+| `POST /api/web-import` | synchroniczny szkic ze strony schema.org; bez zapisu w bazie |
 | `POST /api/imports` · `GET /api/imports/{id}` | start zadania importu z linku; odpytywanie statusu (co 1 s) |
 | `GET /api/plan?week=YYYY-MM-DD` · `PUT /api/plan/{date}/{slot}` · `DELETE /api/plan/{date}/{slot}` | planer |
 | `GET /api/goal` · `PUT /api/goal` | cel dzienny |
@@ -131,6 +132,9 @@ Zasada: każdy PR dodaje lub aktualizuje testy dla zmienianego zachowania. Revie
 | `TZ` / `APP_TIMEZONE` | `Europe/Warsaw` | „dziś” i granice tygodnia |
 | `IMPORT_BACKEND` | `ytdlp` | `ytdlp` / `disabled` / `fake` |
 | `IMPORT_TIMEOUT_S` | `120` | limit czasu pobierania |
+| `WEB_IMPORT_ENABLED` | `true` | osobny przełącznik importu WWW, flaga `web_import_enabled` w config API |
+| `WEB_IMPORT_TIMEOUT_S` | `15` | limit czasu WWW, także DNS i przekierowań |
+| `WEB_IMPORT_MAX_HTML_MB` | `3` | maksymalny rozmiar pobranego HTML |
 | `MAX_VIDEO_MB` / `MAX_PDF_MB` / `MAX_PHOTO_MB` | `300` / `50` / `15` | limity plików |
 | `LOG_LEVEL` | `info` | logi na stdout (K8s) |
 
@@ -177,3 +181,21 @@ Venv projektu: `backend/.venv` (w `.gitignore`); yt-dlp instalowany tylko tam. Z
 4. **M4 Lista zakupów** — wybór dni, agregacja, odhaczanie per tydzień.
 5. **M5 Import** — moduł importu yt-dlp, zakładka Link, źródło wideo w szczegółach.
 6. **M6 PWA + wdrożenie** — manifest, service worker, ikony, manifesty K8s, e2e pełne.
+
+## Import WWW (M7)
+
+`importers/web/` jest niezależny od yt-dlp: transport `fetch.py`, parser schema.org
+`schema.py`, ilości i dopasowanie produktów `ingredients.py`, mapowanie szkicu
+`draft.py`, pobranie zdjęcia przy zapisie `photo.py`. Bez nowych zależności.
+Transport działa w krótkotrwałym podprocesie Pythona z twardym limitem czasu
+(obejmuje blokujący DNS), limitem odpowiedzi i bez cookies/proxy. Każdy hop
+sprawdza wszystkie odpowiedzi DNS i przypina publiczne IP do socketu; HTTPS
+weryfikuje certyfikat dla nazwy hosta. HTML jest parsowany przez bibliotekę
+standardową, z ograniczeniem głębokości i liczby węzłów; treść nie jest wykonywana.
+
+`POST /api/web-import` wykonuje tylko odczyt katalogu produktów. Zwraca szkic
+zgodnie z SPEC 10, bez plików i rekordów. `photo_url` staje się `web_photo_url`
+dopiero w potwierdzonym zapisie przepisu; zdjęcie podlega temu samemu transportowi
+i limitowi MAX_PHOTO_MB. Migracja 004 dodaje do constraintu source_platform `www`.
+Testy korzystają wyłącznie z własnych syntetycznych stron i atrap transportu,
+łącznie z przekierowaniem na prywatny adres i przypadkami awarii.

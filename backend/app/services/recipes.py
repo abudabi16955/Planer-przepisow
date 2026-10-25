@@ -90,7 +90,7 @@ def save_recipe(pool, storage, payload: RecipeCreate, recipe_id=None):
             files = {field: old[field] if old else None for field in FILE_FIELDS}
             if payload.source_type != "pdf":
                 files["pdf"] = None
-            if payload.source_type != "link":
+            if payload.source_type != "link" or payload.source_platform == "www":
                 files["video"] = None
             values = {field: getattr(payload, field) for field in FIELDS}
             if payload.import_job_id:
@@ -126,7 +126,12 @@ def save_recipe(pool, storage, payload: RecipeCreate, recipe_id=None):
                     "UPDATE import_job SET video = NULL, thumbnail = NULL WHERE id = %s",
                     (payload.import_job_id,),
                 )
-            elif payload.source_type == "link" and old and old["source_type"] == "link":
+            elif (
+                payload.source_type == "link"
+                and payload.source_platform != "www"
+                and old
+                and old["source_type"] == "link"
+            ):
                 for field in ("source_platform", "source_url", "source_description"):
                     values[field] = old[field]
             for upload_id, (field, record) in uploads.items():
@@ -143,7 +148,11 @@ def save_recipe(pool, storage, payload: RecipeCreate, recipe_id=None):
                 }
             if payload.source_type == "pdf" and files["pdf"] is None:
                 raise HTTPException(422, "Wybierz plik PDF.")
-            if payload.source_type == "link" and files["video"] is None:
+            if (
+                payload.source_type == "link"
+                and payload.source_platform != "www"
+                and files["video"] is None
+            ):
                 raise HTTPException(422, "Najpierw pobierz wideo.")
             if old:
                 for field in FILE_FIELDS:
