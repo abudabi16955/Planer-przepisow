@@ -198,7 +198,10 @@ def test_redirect_rechecks_dns_and_rejects_private_host():
 
 def test_size_limit_and_redirect_limit():
     with (
-        patch("app.importers.web.fetch.resolve_public", return_value=()),
+        patch(
+            "app.importers.web.fetch.resolve_public",
+            return_value=[(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("8.8.8.8", 443))],
+        ),
         patch("app.importers.web.fetch.PinnedConnection") as connection,
     ):
         connection.return_value.getresponse.return_value = response(length=9999999)
@@ -278,11 +281,12 @@ def test_endpoint_returns_draft_without_writing_any_rows(client):
 @pytest.mark.parametrize(
     "code", ["unsupported_url", "blocked_host", "fetch_failed", "too_large", "timeout", "no_recipe"]
 )
-def test_endpoint_errors_do_not_break_other_features(client, code):
+def test_endpoint_errors_do_not_break_other_features(client, code, caplog):
     with patch("app.routers.web_import.fetch_resource", side_effect=WebImportError(code)):
         result = client.post("/api/web-import", json={"url": URL})
     assert result.status_code in (422, 413, 504)
     assert result.json()["detail"]["code"] == code
+    assert f"code={code} host=recipes.example reason=" in caplog.text
     assert client.get("/api/health").status_code == 200
 
 
@@ -333,7 +337,10 @@ def test_real_worker_blocks_loopback_without_network_access():
 
 def test_download_has_no_cookie_header_and_decodes_html():
     with (
-        patch("app.importers.web.fetch.resolve_public", return_value=()),
+        patch(
+            "app.importers.web.fetch.resolve_public",
+            return_value=[(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("8.8.8.8", 443))],
+        ),
         patch("app.importers.web.fetch.PinnedConnection") as connection,
     ):
         connection.return_value.getresponse.return_value = response(body=b"<p>synthetic</p>")

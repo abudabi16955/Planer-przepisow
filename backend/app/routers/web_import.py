@@ -5,7 +5,7 @@ from psycopg.rows import dict_row
 from pydantic import BaseModel, ConfigDict, StringConstraints
 
 from app.importers.web.draft import create_draft
-from app.importers.web.fetch import WebImportError, fetch_resource
+from app.importers.web.fetch import WebImportError, fetch_resource, log_failure, technical_reason
 
 router = APIRouter(prefix="/api", tags=["web-import"])
 
@@ -19,6 +19,7 @@ class WebImportInput(BaseModel):
 def web_import(payload: WebImportInput, request: Request):
     settings = request.app.state.settings
     if not settings.web_import_enabled:
+        log_failure(WebImportError("fetch_failed", "disabled"), payload.url)
         raise HTTPException(503, detail={"code": "fetch_failed"})
     try:
         page = fetch_resource(
@@ -33,7 +34,9 @@ def web_import(payload: WebImportInput, request: Request):
             ).fetchall()
         return create_draft(page["html"], page["source_url"], products)
     except WebImportError as error:
+        log_failure(error, payload.url)
         status = 413 if error.code == "too_large" else 504 if error.code == "timeout" else 422
         raise HTTPException(status, detail={"code": error.code}) from error
     except (RecursionError, ValueError, TypeError) as error:
+        log_failure(WebImportError("no_recipe", technical_reason(error)), payload.url)
         raise HTTPException(422, detail={"code": "no_recipe"}) from error

@@ -199,3 +199,20 @@ dopiero w potwierdzonym zapisie przepisu; zdjęcie podlega temu samemu transport
 i limitowi MAX_PHOTO_MB. Migracja 004 dodaje do constraintu source_platform `www`.
 Testy korzystają wyłącznie z własnych syntetycznych stron i atrap transportu,
 łącznie z przekierowaniem na prywatny adres i przypadkami awarii.
+
+Transport WWW próbuje kolejnych zweryfikowanych adresów IP (IPv4 przed IPv6),
+gdy zestawienie połączenia TCP/TLS nie powiedzie się. DNS jest rozwiązywany raz
+na hop; obecność choćby jednego niepublicznego adresu nadal odrzuca cały hop.
+Każdy socket jest przypięty do konkretnego zweryfikowanego IP, a TLS nadal używa
+oryginalnej nazwy hosta do SNI i weryfikacji certyfikatu. Nie ma ponownego DNS
+w próbach połączenia. Nieudany socket jest zamykany, a budżet połączenia dzielony
+między pozostałe adresy; próby i przekierowania nie odnawiają globalnego deadline.
+Twardy timeout podprocesu nadal obejmuje również DNS.
+
+Błędy importu zapisujemy na poziomie WARNING jako `web_import code=… host=…
+reason=…`. Podproces przekazuje kod, host i bezpieczną przyczynę w JSON do procesu
+serwera (log pojawia się w logach poda). Przyczyna obejmuje klasę wyjątku i errno,
+status HTTP, Content-Encoding lub Content-Type. Nie logujemy treści strony,
+ścieżki URL, query stringu, surowych komunikatów wyjątków ani stderr podprocesu.
+Wartości nagłówków są ograniczone do krótkich tokenów; techniczne powody pozostają
+w logach, a kontrakt błędów API nie zmienia się. Dotyczy to także pobierania zdjęć.
