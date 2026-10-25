@@ -13,7 +13,7 @@ export interface Recipe extends RecipeNutrition {
   category: 'sniadanie' | 'obiad' | 'kolacja';
   time_min: number | null;
   source_type: 'manual' | 'pdf' | 'link';
-  source_platform: 'instagram' | 'facebook' | null;
+  source_platform: 'instagram' | 'facebook' | 'www' | null;
   source_url: string | null;
   source_description: string | null;
   video: FileReference | null;

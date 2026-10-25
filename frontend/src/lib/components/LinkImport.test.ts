@@ -143,9 +143,9 @@ test('nie nadpisuje wpisanej nazwy, a zmiana URL unieważnia pobrany wynik', asy
 });
 
 test.each([
-  'https://evil.test/post',
+  'to nie jest adres',
   'http://instagram.com/p/x',
-  'https://instagram.com.evil.test/x',
+  'javascript:alert(1)',
   'https://user@instagram.com/p/x',
   'https://facebook.com:444/x',
 ])('zły link %s: toast bez POST', async (value) => {
@@ -157,7 +157,7 @@ test.each([
   await fireEvent.click(
     screen.getByRole('button', { name: 'Pobierz wideo i opis' }),
   );
-  expect(get(toast)?.message).toBe('Wklej link z Instagrama lub Facebooka');
+  expect(get(toast)?.message).toBe('Wklej poprawny link do przepisu');
   expect(
     vi.mocked(fetch).mock.calls.some(([input]) => input === '/api/imports'),
   ).toBe(false);

@@ -105,9 +105,11 @@
       ? 'Ręcznie'
       : recipe.source_type === 'pdf'
         ? 'PDF'
-        : recipe.source_platform === 'facebook'
-          ? 'Facebook'
-          : 'Instagram',
+        : recipe.source_platform === 'www'
+          ? 'WWW'
+          : recipe.source_platform === 'facebook'
+            ? 'Facebook'
+            : 'Instagram',
   );
   const ingredients = $derived(
     recipe.ingredients.map((ingredient, index) => ({
@@ -138,8 +140,10 @@
         'm.facebook.com',
         'fb.watch',
       ];
-      return url.protocol === 'https:' &&
-        hosts.includes(url.hostname) &&
+      return (recipe.source_platform === 'www'
+        ? ['https:', 'http:'].includes(url.protocol) &&
+          (!url.port || ['80', '443'].includes(url.port))
+        : url.protocol === 'https:' && hosts.includes(url.hostname)) &&
         !url.username &&
         !url.password
         ? url
@@ -451,7 +455,11 @@
             {/if}
             {#if original}
               <div class="source-card">
-                <div class="file-note">Oryginalny post</div>
+                <div class="file-note">
+                  {recipe.source_platform === 'www'
+                    ? 'Oryginalna strona'
+                    : 'Oryginalny post'}
+                </div>
                 <strong
                   >{original.hostname}/{original.pathname
                     .split('/')
@@ -466,7 +474,10 @@
                   class="primary"
                   href={original.href}
                   target="_blank"
-                  rel="noopener noreferrer">Otwórz oryginał ({source})</a
+                  rel="noopener noreferrer"
+                  >{recipe.source_platform === 'www'
+                    ? 'Otwórz oryginał'
+                    : `Otwórz oryginał (${source})`}</a
                 >
               </div>
             {/if}
@@ -474,10 +485,10 @@
                 <strong>Opis z posta</strong>
                 <p class="description">{recipe.source_description}</p>
               </div>{/if}
-            <p class="hint">
-              Kopia wideo jest w aplikacji, więc przepis zostaje nawet wtedy,
-              gdy autor usunie lub ukryje post.
-            </p>
+            {#if recipe.source_platform !== 'www'}<p class="hint">
+                Kopia wideo jest w aplikacji, więc przepis zostaje nawet wtedy,
+                gdy autor usunie lub ukryje post.
+              </p>{/if}
           {/if}
         </div>
       {/if}
