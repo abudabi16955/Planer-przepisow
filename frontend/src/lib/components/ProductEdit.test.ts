@@ -269,7 +269,23 @@ test('edycja z dopasowanego wiersza importu odświeża nazwę bez zmiany zatwier
   expect(screen.getByText('Zatwierdzone: 1 z 1')).toBeTruthy();
 });
 
-test('edycja produktu z importu natychmiast dopasowuje wiersz z niepasującą jednostką (kryterium 7)', async () => {
+test('edycja produktu z importu natychmiast dopasowuje wiersz ze szkicu parsera (kryterium 7 i 9)', async () => {
+  const paprikaProduct = {
+    id: 'papryka-slodka-id',
+    name: 'Papryka słodka mielona',
+    units: ['łyżeczka'],
+    nutrition_basis: 'g',
+    kcal: 282,
+    protein: 14.1,
+    carbs: 54,
+    fat: 12.9,
+    unit_conversions: {},
+    is_custom: false,
+    created_at: '2026-01-01T00:00:00Z',
+  };
+
+  const onSave = vi.fn().mockResolvedValue(recipes[0]);
+
   vi.mocked(fetch).mockImplementation(
     async (input: RequestInfo | URL, options?: RequestInit) => {
       const url =
@@ -283,31 +299,38 @@ test('edycja produktu z importu natychmiast dopasowuje wiersz z niepasującą je
           import_enabled: true,
           web_import_enabled: true,
         });
-      if (url === '/api/products') return Response.json(products);
+      if (url === '/api/products') return Response.json([paprikaProduct]);
       if (url === '/api/web-import')
         return Response.json({
           ...webDraft,
           ingredients: [
             {
-              name: 'Produkt',
-              product_id: 'product',
+              raw: 'słodka papryka mielona 2 płaskie łyżki',
+              name: 'słodka papryka mielona',
+              product_id: paprikaProduct.id,
               qty: 2,
               unit: 'łyżka',
               unit_ok: false,
               confirmed: false,
-              quantity_variants: [{ qty: 2, unit: 'łyżka' }],
+              quantity_variants: [
+                { qty: 2, unit: 'łyżka' },
+                { qty: 20, unit: 'g' },
+              ],
             },
           ],
         });
-      if (url === '/api/products/product' && options?.method === 'PUT') {
+      if (
+        url === `/api/products/${paprikaProduct.id}` &&
+        options?.method === 'PUT'
+      ) {
         saved = JSON.parse(options.body as string);
-        return Response.json({ ...products[0], ...saved });
+        return Response.json({ ...paprikaProduct, ...saved });
       }
       throw new Error(`Unexpected ${url}`);
     },
   );
 
-  render(RecipeForm, { onSave: vi.fn(async () => recipes[0]) });
+  render(RecipeForm, { onSave });
   await screen.findByRole('button', { name: 'Pobierz wideo i opis' });
   await fireEvent.input(screen.getByLabelText('Link do posta lub reela'), {
     target: { value: webDraft.source_url },
@@ -321,7 +344,9 @@ test('edycja produktu z importu natychmiast dopasowuje wiersz z niepasującą je
 
   // Klikamy Edytuj produkt
   await fireEvent.click(
-    screen.getByRole('button', { name: 'Edytuj produkt: Produkt' }),
+    screen.getByRole('button', {
+      name: `Edytuj produkt: ${paprikaProduct.name}`,
+    }),
   );
   const dialog = within(screen.getByRole('dialog', { name: 'Edytuj produkt' }));
 
@@ -333,14 +358,55 @@ test('edycja produktu z importu natychmiast dopasowuje wiersz z niepasującą je
   await fireEvent.click(dialog.getByRole('button', { name: 'Zapisz zmiany' }));
   await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
 
-  // Błąd jednostki zniknął, przycisk zatwierdzenia jest aktywny
+  expect(saved).toEqual({
+    name: 'Papryka słodka mielona',
+    units: ['łyżeczka', 'łyżka'],
+    unit_conversions: { łyżka: 10 },
+    nutrition_basis: 'g',
+    kcal: 282,
+    protein: 14.1,
+    carbs: 54,
+    fat: 12.9,
+  });
+
+  // Błąd jednostki zniknął, wiersz przyjął 2 łyżki, a przycisk zatwierdzenia jest aktywny
   expect(screen.queryByText('Wybierz jednostkę produktu.')).toBeNull();
+  expect(
+    (screen.getByLabelText(`Ilość: ${paprikaProduct.name}`) as HTMLInputElement)
+      .value,
+  ).toBe('2');
+
   const confirmBtn = screen.getByRole('button', {
-    name: 'Zatwierdź składnik: Produkt',
+    name: `Zatwierdź składnik: ${paprikaProduct.name}`,
   }) as HTMLButtonElement;
   expect(confirmBtn.disabled).toBe(false);
   // Status confirmed to nadal false (wymaga kliknięcia)
   expect(screen.getByText('Zatwierdzone: 0 z 1')).toBeTruthy();
+
+  // Zatwierdzamy składnik
+  await fireEvent.click(confirmBtn);
+  expect(screen.getByText('Zatwierdzone: 1 z 1')).toBeTruthy();
+
+  // Zapisujemy przepis i weryfikujemy przekazane składniki
+  const saveBtn = screen.getByRole('button', {
+    name: 'Zapisz przepis',
+  }) as HTMLButtonElement;
+  expect(saveBtn.disabled).toBe(false);
+  await fireEvent.click(saveBtn);
+
+  await waitFor(() =>
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        ingredients: [
+          {
+            product_id: paprikaProduct.id,
+            quantity: 2,
+            unit: 'łyżka',
+          },
+        ],
+      }),
+    ),
+  );
 });
 
 test('podpowiedź makro korzysta z nowych danych produktu bez zapisania kopii do pól przepisu', async () => {

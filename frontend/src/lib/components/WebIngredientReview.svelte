@@ -215,103 +215,102 @@
 
 <style>
   section {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
+    padding: 20px;
+    border-radius: 24px;
+    background: var(--white);
+    margin-bottom: 16px;
   }
-  .review-count {
-    margin: 0;
-    color: var(--muted);
+  h2 {
+    font: 700 20px var(--font-heading);
+    margin: 0 0 16px;
   }
   .review-row {
+    border-bottom: 1px solid var(--border);
+    padding: 16px 12px;
+    border-left: 4px solid transparent;
+    border-radius: 12px;
+    margin-top: 8px;
+    overflow-wrap: anywhere;
+  }
+  .pending {
+    border-left-color: var(--warning);
+    background: color-mix(in srgb, var(--warning) 8%, var(--white));
+  }
+  .approved {
     background: var(--white);
-    border-radius: 16px;
-    padding: 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    border: 1px solid var(--border);
   }
-  .review-row.pending {
-    border-left: 4px solid var(--warning);
-  }
-  .review-row.approved {
-    border-left: 4px solid var(--accent);
-  }
-  .state {
-    font-size: 13px;
-    font-weight: 600;
-  }
-  .state.warning {
-    color: var(--warning);
-  }
-  .state.accepted {
+  .accepted {
     color: var(--accent);
   }
-  .raw {
-    margin: 0;
+  .state {
+    margin-left: 8px;
+    font-weight: 700;
+  }
+  .review-count {
     color: var(--muted);
-    font-style: italic;
+    margin: 0 0 16px;
+  }
+  button.primary {
+    background: var(--accent);
+    color: var(--white);
+  }
+  .primary:disabled {
+    opacity: 0.5;
+  }
+  .raw {
+    color: var(--muted);
+    font-size: 13px;
+    white-space: pre-wrap;
+  }
+  .warning,
+  [role='alert'] {
+    color: var(--warning);
+  }
+  .warning {
+    margin-left: 8px;
+  }
+  label {
+    display: block;
+    font-weight: 600;
+  }
+  input {
+    display: block;
+    width: 100%;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    font: inherit;
+    margin: 8px 0;
+  }
+  button {
+    min-height: 44px;
+    padding: 10px 14px;
+    border-radius: 12px;
+    background: var(--accent-light);
+    margin: 4px;
+  }
+  button.secondary-accent {
+    border: 1.5px solid var(--accent);
+    border-radius: 12px;
+    background: var(--white);
+    color: var(--accent);
+    font-weight: 600;
+    min-height: 44px;
+    padding: 10px 16px;
+  }
+  button.secondary-accent:hover:not(:disabled) {
+    background: var(--accent-light);
   }
   .chips {
     display: flex;
     flex-wrap: wrap;
-    gap: 6px;
   }
   .chips button {
-    padding: 6px 12px;
     border-radius: 999px;
     background: var(--gray);
-    font-size: 13px;
   }
-  .chips button[aria-pressed='true'] {
-    background: var(--accent);
+  [aria-pressed='true'] {
+    background: var(--accent) !important;
     color: white;
-  }
-  label {
-    font-weight: 600;
-  }
-  input {
-    width: 100%;
-    padding: 10px 14px;
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    margin-top: 4px;
-    font: inherit;
-  }
-  .primary {
-    background: var(--accent);
-    color: white;
-    padding: 12px;
-    border-radius: 12px;
-    font-weight: 700;
-  }
-  .primary:disabled {
-    background: var(--disabled);
-    color: var(--muted);
-    cursor: default;
-  }
-  .secondary-accent {
-    align-self: flex-start;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 38px;
-    padding: 6px 14px;
-    border: 1.5px solid var(--accent);
-    border-radius: 10px;
-    background: var(--white);
-    color: var(--accent);
-    font-weight: 600;
-    font-size: 13px;
-    cursor: pointer;
-  }
-  .secondary-accent:hover {
-    background: var(--accent-light);
-  }
-  [role='alert'] {
-    color: var(--warning);
-    font-size: 13px;
-    margin: 0;
   }
 </style>
