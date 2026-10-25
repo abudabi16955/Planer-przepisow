@@ -42,6 +42,7 @@ def test_migrations_from_empty_and_idempotent(clean_database):
                 ("001_init.sql",),
                 ("002_schema.sql",),
                 ("003_seed_products.sql",),
+                ("004_web_source.sql",),
             ]
 
 
@@ -65,7 +66,11 @@ def test_health_config_and_spa(clean_database, tmp_path):
     )
     with TestClient(create_app(settings, static)) as client:
         assert client.get("/api/health").json() == {"status": "ok"}
-        assert client.get("/api/config").json() == {"import_enabled": False, "max_video_mb": 300}
+        assert client.get("/api/config").json() == {
+            "import_enabled": False,
+            "max_video_mb": 300,
+            "web_import_enabled": True,
+        }
         assert "Planer przepisów" in client.get("/planer").text
         assert client.get("/api/missing").status_code == 404
         assert client.get("/missing.js").status_code == 404
@@ -92,4 +97,8 @@ def test_import_availability(clean_database, tmp_path, backend, available, enabl
         patch("app.importers.registry.find_spec", return_value=object() if available else None),
         TestClient(create_app(settings)) as client,
     ):
-        assert client.get("/api/config").json() == {"import_enabled": enabled, "max_video_mb": 300}
+        assert client.get("/api/config").json() == {
+            "import_enabled": enabled,
+            "max_video_mb": 300,
+            "web_import_enabled": True,
+        }

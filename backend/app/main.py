@@ -20,6 +20,7 @@ from app.routers.planner import router as planner_router
 from app.routers.products import router as products_router
 from app.routers.recipes import router as recipes_router
 from app.routers.shopping import router as shopping_router
+from app.routers.web_import import router as web_import_router
 from app.storage import Storage
 
 
@@ -102,8 +103,10 @@ def create_app(settings: Settings | None = None, static_dir: Path | None = None)
         return {
             "import_enabled": app.state.import_jobs.enabled,
             "max_video_mb": settings.max_video_mb,
+            "web_import_enabled": settings.web_import_enabled,
         }
 
+    app.include_router(web_import_router)
     app.include_router(imports_router)
     app.include_router(products_router)
     app.include_router(files_router)

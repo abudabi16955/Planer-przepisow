@@ -215,3 +215,49 @@ Jeden rekord: `kcal`, `protein`, `carbs`, `fat` (liczby ≥ 0; 0 = brak celu).
 2. **Edycja i usuwanie przepisów — tak.** W szczegółach przepisu przyciski „Edytuj” (ten sam formularz co „Dodaj przepis”, wypełniony danymi; zapis → toast „Przepis zapisany”) i „Usuń” (potwierdzenie „Usunąć przepis? Zniknie też z planera.”; usuwa wpisy planera i pliki przepisu; toast „Przepis usunięty”). Plik źródłowy (wideo/PDF) przy edycji można podmienić tylko przez nowy import/upload.
 3. **Nawigacja między tygodniami — tak.** Strzałki ‹ › przy zakresie dat w planerze (telefon i laptop) i na liście zakupów; „Dziś”/plakietka tylko w bieżącym tygodniu; domyślnie bieżący tydzień. Lista zakupów dotyczy tygodnia wybranego w planerze; preset „Od dziś” aktywny tylko w bieżącym tygodniu.
 4. **Opis posta — zapisujemy.** Pokazywany w zakładce „Źródło” pod kartą „Oryginalny post” jako zwykły tekst (escapowany), nagłówek „Opis z posta”. Bez automatycznego parsowania składników.
+
+## 10. Import przepisu ze strony WWW (2026-10-25)
+
+Własny parser schema.org, bez AI i płatnych API. `POST /api/web-import` przyjmuje
+`{url}` i zwraca szkic bez zapisu w bazie ani tworzenia plików. Najpierw szuka
+`Recipe` w JSON-LD (również tablice, `@graph`, lista `@type`), potem w microdata.
+Brak danych strukturalnych oznacza `no_recipe`; nie zgadujemy przepisu z HTML.
+
+Szkic zawiera `title`, `time_min`, `servings`, `category`, `steps`, `kcal`, `protein`,
+`carbs`, `fat`, `photo_url`, `source_url`, `source_host`, `ingredients` i `notes`.
+Czas pochodzi z ISO 8601 `totalTime` lub sumy `prepTime` i `cookTime`. Liczba porcji
+musi być jednoznaczną liczbą całkowitą 1–50; inaczej jest `null` z uwagą. Kategorie
+rozpoznajemy po słowach kluczowych; brak dopasowania daje `null`. Kroki są
+spłaszczone z tekstu, HowToStep i HowToSection, bez HTML. Wartości odżywcze
+przyjmujemy tylko przy jawnym oznaczeniu jednej porcji w `servingSize`; masę,
+objętość (np. 100 g) lub brak potwierdzenia podstawy pomijamy z uwagą.
+
+Każdy składnik ma `raw`, `qty`, `unit`, `name`, `product_id`, `match`
+(`exact`, `fuzzy`, `none`) i `unit_ok`. Parser obsługuje polskie liczby, przecinek,
+ułamki, „pół”, „ćwierć”, odmiany jednostek i zakresy (górna wartość z uwagą).
+Dekagramy zamienia na gramy, ząbki na sztuki z uwagą, brak jednostki przy liczbie
+na sztuki. „Do smaku” pozostaje bez ilości. Dopasowanie produktu: normalizacja
+nazwy, następnie podobieństwo słów/prefiksów; nieznane i przybliżone dopasowania
+wymagają zatwierdzenia. Nie tworzymy produktów automatycznie. Jednostka spoza
+listy produktu daje `unit_ok: false`.
+
+Zdjęcie pobieramy **dopiero przy zapisie**. Szkic zwraca pierwszy adres `image`;
+klient nie powinien renderować go bezpośrednio z obcej strony. Potwierdzony
+formularz wysyła `source_type: "link"`, `source_platform: "www"`, `source_url`
+i opcjonalne `web_photo_url` do POST/PUT `/api/recipes`. Serwer ponownie sprawdza
+adres i przekierowania zdjęcia, limit `MAX_PHOTO_MB` i sygnaturę PNG/JPEG/GIF/WebP,
+a następnie przenosi zdjęcie do plików przepisu. Błąd zapisu usuwa pliki tymczasowe.
+Ręcznie wgrane `photo_upload_id` ma pierwszeństwo. Migracja 004 dopuszcza źródło
+`www`; nie zmienia pozostałych źródeł. UI importu WWW jest osobnym zadaniem #54.
+
+Pobieranie dopuszcza wyłącznie HTTP/HTTPS na portach 80/443, bez ciasteczek,
+z własnym User-Agent. Każde rozwiązanie DNS i każde z maksymalnie 5 przekierowań
+musi wskazywać wyłącznie publiczne adresy IP. Połączenie używa sprawdzonego IP
+(z weryfikacją TLS dla oryginalnej nazwy hosta), bez ponownego DNS.
+Treść strony to dane, nigdy kod ani polecenia.
+
+Konfiguracja: `WEB_IMPORT_ENABLED=true`, `WEB_IMPORT_TIMEOUT_S=15`,
+`WEB_IMPORT_MAX_HTML_MB=3`. `/api/config` zwraca `web_import_enabled`.
+Limit czasu obejmuje DNS i pobieranie. Kody błędów: `unsupported_url`,
+`blocked_host`, `fetch_failed`, `too_large`, `timeout`, `no_recipe`.
+Wyłączenie modułu daje HTTP 503; pozostałe funkcje aplikacji nadal działają.

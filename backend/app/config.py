@@ -15,6 +15,9 @@ class Settings(BaseSettings):
     app_timezone: str = "Europe/Warsaw"
     import_backend: Literal["ytdlp", "disabled", "fake"] = "ytdlp"
     import_timeout_s: int = Field(default=120, gt=0)
+    web_import_enabled: bool = True
+    web_import_timeout_s: int = Field(default=15, gt=0)
+    web_import_max_html_mb: int = Field(default=3, gt=0)
     max_video_mb: int = Field(default=300, gt=0)
     max_pdf_mb: int = Field(default=50, gt=0)
     max_photo_mb: int = Field(default=15, gt=0)
