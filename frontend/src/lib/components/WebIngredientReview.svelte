@@ -14,6 +14,7 @@
   const activeRows = $derived(rows.filter((row) => !row.skipped));
   const approvedCount = $derived(activeRows.filter(readyIngredient).length);
   let amounts = $state<Record<number, string>>({});
+  let editingProduct = $state<number | null>(null);
   let editing = $state<{ index: number; create: boolean } | null>(null);
   function accept(
     index: number,
@@ -59,6 +60,14 @@
         >
         <p class="raw">{row.raw}</p>
         {#if product}
+          <button
+            type="button"
+            aria-label={`Edytuj produkt: ${product.name}`}
+            onclick={() => {
+              editing = null;
+              editingProduct = index;
+            }}>Edytuj produkt</button
+          >
           {#if row.unit !== 'do smaku'}<label
               >Ilość<input
                 aria-label={`Ilość: ${product.name}`}
@@ -108,8 +117,10 @@
           <button
             type="button"
             aria-label={`Wybierz produkt: ${product?.name || row.name}`}
-            onclick={() => (editing = { index, create: false })}
-            >Wybierz produkt</button
+            onclick={() => {
+              editingProduct = null;
+              editing = { index, create: false };
+            }}>Wybierz produkt</button
           >
           <button
             type="button"
@@ -120,20 +131,32 @@
           <button
             type="button"
             aria-label={`Wybierz produkt: ${product?.name || row.name}`}
-            onclick={() => (editing = { index, create: false })}
-            >Wybierz produkt</button
+            onclick={() => {
+              editingProduct = null;
+              editing = { index, create: false };
+            }}>Wybierz produkt</button
           >
           <button
             type="button"
             aria-label={`Dodaj „${row.name}” jako nowy produkt`}
-            onclick={() => (editing = { index, create: true })}
-            >Dodaj „{row.name}” jako nowy produkt</button
+            onclick={() => {
+              editingProduct = null;
+              editing = { index, create: true };
+            }}>Dodaj „{row.name}” jako nowy produkt</button
           >
           <button
             type="button"
             aria-label={`Pomiń składnik: ${row.name}`}
             onclick={() => (row.skipped = true)}>Pomiń</button
           >
+        {/if}
+        {#if editingProduct === index && product}
+          <IngredientPicker
+            bind:products
+            initialEdit={product}
+            editorOnly
+            onclose={() => (editingProduct = null)}
+          />
         {/if}
         {#if editing?.index === index}
           {#key editing}
