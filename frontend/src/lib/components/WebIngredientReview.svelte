@@ -1,11 +1,18 @@
 <script lang="ts">
   import type { CatalogueProduct } from '../api';
-  import { formatImportAmount, type ReviewIngredient } from '../webImport';
+  import {
+    formatImportAmount,
+    readyIngredient,
+    type ReviewIngredient,
+  } from '../webImport';
   import IngredientPicker from './IngredientPicker.svelte';
   let {
     rows = $bindable<ReviewIngredient[]>([]),
     products = $bindable<CatalogueProduct[]>([]),
   } = $props();
+  const uid = $props.id();
+  const activeRows = $derived(rows.filter((row) => !row.skipped));
+  const approvedCount = $derived(activeRows.filter(readyIngredient).length);
   let amounts = $state<Record<number, string>>({});
   let editing = $state<{ index: number; create: boolean } | null>(null);
   function accept(
@@ -27,12 +34,29 @@
 
 <section aria-label="Przegląd składników">
   <h2>Przegląd składników</h2>
+  <p class="review-count" aria-live="polite">
+    Zatwierdzone: {approvedCount} z {activeRows.length}
+  </p>
   {#each rows as row, index (index)}
     {#if !row.skipped}
       {@const product = products.find((p) => p.id === row.product_id)}
-      <div class="review-row" role="group" aria-label={`Składnik ${index + 1}`}>
+      {@const approved = readyIngredient(row)}
+      <div
+        class="review-row"
+        class:pending={!approved}
+        class:approved
+        role="group"
+        aria-label={`Składnik ${index + 1}`}
+        aria-describedby={`${uid}-state-${index}`}
+      >
         <strong>{product?.name || row.name}</strong>
-        {#if row.match === 'fuzzy'}<span class="warning">sprawdź</span>{/if}
+        <span
+          id={`${uid}-state-${index}`}
+          class="state"
+          class:warning={!approved}
+          class:accepted={approved}
+          >{approved ? '✓ zatwierdzony' : 'sprawdź'}</span
+        >
         <p class="raw">{row.raw}</p>
         {#if product}
           {#if row.unit !== 'do smaku'}<label
@@ -58,6 +82,7 @@
             {#each [...product.units, 'do smaku'] as unit (unit)}
               <button
                 type="button"
+                aria-label={`${unit}: ${product.name}`}
                 aria-pressed={row.unit === unit && row.unit_ok === true}
                 onclick={() => {
                   row.unit = unit;
@@ -67,12 +92,22 @@
             {/each}
           </div>
           {#if !row.unit_ok}<p role="alert">Wybierz jednostkę produktu.</p>{/if}
-          {#if !row.confirmed}<button
+          {#if approved}<button
               type="button"
+              aria-label={`Cofnij zatwierdzenie: ${product.name}`}
+              onclick={() => (row.confirmed = false)}
+              >Cofnij zatwierdzenie</button
+            >
+          {:else}<button
+              class="primary"
+              type="button"
+              aria-label={`Zatwierdź składnik: ${product.name}`}
+              disabled={!readyIngredient({ ...row, confirmed: true })}
               onclick={() => (row.confirmed = true)}>Zatwierdź składnik</button
             >{/if}
           <button
             type="button"
+            aria-label={`Wybierz produkt: ${product?.name || row.name}`}
             onclick={() => (editing = { index, create: false })}
             >Wybierz produkt</button
           >
@@ -84,16 +119,20 @@
         {:else}
           <button
             type="button"
+            aria-label={`Wybierz produkt: ${product?.name || row.name}`}
             onclick={() => (editing = { index, create: false })}
             >Wybierz produkt</button
           >
           <button
             type="button"
+            aria-label={`Dodaj „${row.name}” jako nowy produkt`}
             onclick={() => (editing = { index, create: true })}
             >Dodaj „{row.name}” jako nowy produkt</button
           >
-          <button type="button" onclick={() => (row.skipped = true)}
-            >Pomiń</button
+          <button
+            type="button"
+            aria-label={`Pomiń składnik: ${row.name}`}
+            onclick={() => (row.skipped = true)}>Pomiń</button
           >
         {/if}
         {#if editing?.index === index}
@@ -108,8 +147,10 @@
               onadd={(ingredient) => accept(index, ingredient)}
             />
           {/key}
-          <button type="button" onclick={() => (editing = null)}
-            >Anuluj wybór</button
+          <button
+            type="button"
+            aria-label={`Anuluj wybór: ${row.name}`}
+            onclick={() => (editing = null)}>Anuluj wybór</button
           >
         {/if}
       </div>
@@ -130,8 +171,36 @@
   }
   .review-row {
     border-bottom: 1px solid var(--border);
-    padding: 16px 0;
+    padding: 16px 12px;
+    border-left: 4px solid transparent;
+    border-radius: 12px;
+    margin-top: 8px;
     overflow-wrap: anywhere;
+  }
+  .pending {
+    border-left-color: var(--warning);
+    background: color-mix(in srgb, var(--warning) 8%, var(--white));
+  }
+  .approved {
+    background: var(--white);
+  }
+  .accepted {
+    color: var(--accent);
+  }
+  .state {
+    margin-left: 8px;
+    font-weight: 700;
+  }
+  .review-count {
+    color: var(--muted);
+    margin: 0 0 16px;
+  }
+  button.primary {
+    background: var(--accent);
+    color: var(--white);
+  }
+  .primary:disabled {
+    opacity: 0.5;
   }
   .raw {
     color: var(--muted);
