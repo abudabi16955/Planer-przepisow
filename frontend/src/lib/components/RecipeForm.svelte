@@ -16,6 +16,13 @@
   import { showToast } from '../toast';
   import IngredientPicker from './IngredientPicker.svelte';
   import LinkImport from './LinkImport.svelte';
+  import WebIngredientReview from './WebIngredientReview.svelte';
+  import {
+    reviewIngredients,
+    readyIngredient,
+    type WebDraft,
+    type ReviewIngredient,
+  } from '../webImport';
   import type { ImportJob } from '../importApi';
   let {
     initialRecipe,
@@ -51,6 +58,34 @@
   let photo = $state<File | null>(null);
   let pending = $state(false);
   let importResult = $state<ImportJob | null>(null);
+  let webDraft = $state<WebDraft | null>(null);
+  let reviewRows = $state<ReviewIngredient[]>([]);
+  const unresolved = $derived(
+    reviewRows.filter((row) => !row.skipped && !readyIngredient(row)).length,
+  );
+  const approved = $derived(
+    reviewRows
+      .filter((row) => !row.skipped && readyIngredient(row))
+      .map((row) => ({
+        product_id: row.product_id!,
+        quantity: row.unit === 'do smaku' ? null : row.qty,
+        unit: row.unit === 'do smaku' ? '' : row.unit,
+      })),
+  );
+  function webImported(draft: WebDraft | null) {
+    webDraft = draft;
+    linkChanged = true;
+    reviewRows = draft ? reviewIngredients(draft) : [];
+    if (!draft) return;
+    if (!title.trim()) title = draft.title;
+    if (draft.category) category = draft.category;
+    time = draft.time_min?.toString() ?? '';
+    servings = draft.servings?.toString() ?? '';
+    steps = draft.steps.join('\n');
+    values = [draft.kcal, draft.protein, draft.carbs, draft.fat].map(
+      (v) => v?.toString() ?? '',
+    );
+  }
   let linkChanged = $state(false);
   function imported(job: ImportJob | null) {
     importResult = job;
@@ -71,7 +106,9 @@
         (Number.isInteger(number(time)) && number(time)! > 0)) &&
       (source === 'manual' ||
         (source === 'link' &&
-          (importResult?.video ||
+          (webDraft ||
+            importResult?.video ||
+            (!linkChanged && initialRecipe?.source_platform === 'www') ||
             (!linkChanged &&
               initialRecipe?.source_type === 'link' &&
               initialRecipe.video))) ||
@@ -84,7 +121,7 @@
       ? recipeNutrition(
           {
             servings: number(servings) || 1,
-            ingredients,
+            ingredients: [...ingredients, ...approved],
             kcal: null,
             protein: null,
             carbs: null,
@@ -117,7 +154,7 @@
   });
   async function save(event: SubmitEvent) {
     event.preventDefault();
-    if (!valid || pending) return;
+    if (!valid || pending || unresolved) return;
     pending = true;
     error = '';
     try {
@@ -132,11 +169,26 @@
         servings: number(servings),
         source_type: source,
         import_job_id: source === 'link' ? importResult?.id : undefined,
+        source_platform:
+          source === 'link'
+            ? webDraft
+              ? 'www'
+              : !linkChanged && initialRecipe?.source_platform === 'www'
+                ? 'www'
+                : undefined
+            : undefined,
+        source_url:
+          source === 'link'
+            ? (webDraft?.source_url ??
+              (!linkChanged ? initialRecipe?.source_url : undefined))
+            : undefined,
+        web_photo_url:
+          source === 'link' && !photo ? webDraft?.photo_url : undefined,
         steps: steps
           .split('\n')
           .map((s) => s.trim())
           .filter(Boolean),
-        ingredients,
+        ingredients: [...ingredients, ...approved],
         kcal: number(values[0]),
         protein: number(values[1]),
         carbs: number(values[2]),
@@ -165,8 +217,10 @@
         disabled={pending}
         onclick={() => navigate(`/przepis/${initialRecipe.id}`)}>Anuluj</button
       >{/if}
-    <button class="primary save" disabled={!valid || pending} type="submit"
-      >{pending ? 'Zapisywanie…' : 'Zapisz przepis'}</button
+    <button
+      class="primary save"
+      disabled={!valid || pending || unresolved > 0}
+      type="submit">{pending ? 'Zapisywanie…' : 'Zapisz przepis'}</button
     >
   </header>
   <div class="fields">
@@ -186,6 +240,7 @@
         active={source === 'link'}
         disabled={pending}
         onchange={imported}
+        onweb={webImported}
       />
       {#if source === 'manual'}<p>
           Własny przepis bez źródła. Wypełnij pola poniżej.
@@ -213,6 +268,11 @@
               }}>×</button
             >
           </p>{/if}{/if}
+      {#if webDraft?.notes.length}<div aria-label="Uwagi do importu">
+          <ul>
+            {#each webDraft.notes as note (note)}<li>{note}</li>{/each}
+          </ul>
+        </div>{/if}
     </section>
     <label class="name"
       >Nazwa<input
@@ -250,6 +310,13 @@
       >
     </div>
     <div class="ingredients">
+      {#if reviewRows.length}<WebIngredientReview
+          bind:products
+          bind:rows={reviewRows}
+        />{/if}
+      {#if unresolved}<p role="alert">
+          Zatwierdź albo pomiń {unresolved} składników
+        </p>{/if}
       <IngredientPicker bind:products bind:ingredients />
     </div>
     <label class="steps"
@@ -271,7 +338,9 @@
       </div>
     </section>
     <label class="photo file"
-      >{#if source === 'link' && importResult?.thumbnail && !photo}<img
+      >{#if source === 'link' && webDraft?.photo_url && !photo}<span
+          >Zdjęcie ze strony zapisze się razem z przepisem.</span
+        >{/if}{#if source === 'link' && importResult?.thumbnail && !photo}<img
           class="existing-photo"
           src={fileUrl(importResult.thumbnail) ?? undefined}
           alt="Okładka z wideo"

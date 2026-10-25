@@ -192,7 +192,9 @@ test('klawiatura wybiera produkt i Escape zamyka arkusz bez zapisu', async () =>
   const input = screen.getByRole('combobox');
   await fireEvent.input(input, { target: { value: 'Produkt' } });
   await fireEvent.keyDown(input, { key: 'ArrowDown' });
-  expect(input.getAttribute('aria-activedescendant')).toBe('product-option-0');
+  expect(input.getAttribute('aria-activedescendant')).toBe(
+    screen.getByRole('option').id,
+  );
   await fireEvent.keyDown(input, { key: 'Enter' });
   expect(screen.queryByRole('listbox')).toBeNull();
   await fireEvent.input(input, { target: { value: 'Sumak' } });

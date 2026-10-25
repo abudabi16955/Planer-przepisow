@@ -261,3 +261,33 @@ Konfiguracja: `WEB_IMPORT_ENABLED=true`, `WEB_IMPORT_TIMEOUT_S=15`,
 Limit czasu obejmuje DNS i pobieranie. Kody błędów: `unsupported_url`,
 `blocked_host`, `fetch_failed`, `too_large`, `timeout`, `no_recipe`.
 Wyłączenie modułu daje HTTP 503; pozostałe funkcje aplikacji nadal działają.
+
+### 10.1. Zakładka Link i przegląd składników WWW
+
+Linki IG/FB zachowują import wideo. Pozostałe poprawne adresy HTTP(S) używają
+`POST /api/web-import`; błędny tekst daje toast „Wklej poprawny link do przepisu”.
+Notka: „Instagram, Facebook (posty publiczne) lub strona z przepisem”. Przycisk
+„Pobierz przepis ze strony”, postęp „Pobieram przepis z {host}…”. Flaga
+`web_import_enabled: false` ukrywa przycisk WWW i pokazuje „Pobieranie ze stron
+jest chwilowo niedostępne.”, bez blokowania pozostałych sposobów dodawania.
+
+Szkic wypełnia pustą nazwę, rozpoznaną kategorię, czas, porcje, kroki i wartości
+na porcję. Zdjęcie pobiera serwer przy zapisie; użytkownik może zastąpić je
+własnym plikiem. Uwagi i oryginalne linie składników wyświetlamy jako tekst.
+Składniki mają edytowalną ilość, chipy jednostek i możliwość usunięcia/zamiany
+produktu. Dopasowanie przybliżone oznaczamy „sprawdź” i wymaga zatwierdzenia;
+niezgodna jednostka wymaga wybrania jednej z jednostek produktu. Nieznany składnik
+można wybrać z bazy, dodać jako nowy produkt (nazwa i jednostka ze szkicu) albo
+pominąć. Dopóki są nierozstrzygnięte pozycje, zapis jest nieaktywny i pokazujemy
+„Zatwierdź albo pomiń {n} składników”. Do zapisu trafiają tylko zatwierdzone pozycje.
+Układ pozostaje mobile-first, z kolumną składników 460 px na laptopie.
+
+Po zapisie źródło ma typ `link` i platformę `www`, plakietkę „WWW”; nie trafia do
+filtra „Z wideo”. Zakładka Źródło pokazuje „Oryginalna strona”, host i datę zapisu
+oraz „Otwórz oryginał” w nowej karcie z `rel="noopener noreferrer"`.
+
+Błędy: `no_recipe` — „Na tej stronie nie znalazłem przepisu. Dodaj go ręcznie.”;
+`blocked_host`/`unsupported_url` — „Nie mogę otworzyć tego adresu.”;
+`fetch_failed`/`timeout` — „Nie udało się pobrać strony.”; `too_large` — „Strona
+jest za duża.”. Dostępny jest przycisk „Spróbuj ponownie”, a formularz ręczny
+pozostaje dostępny. Brak sieci: „Brak połączenia z serwerem.”.

@@ -1,22 +1,49 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import { post, type CatalogueProduct } from '../api';
   import { formatQuantity } from '../domain/format';
   import { showToast } from '../toast';
   let {
+    initialSearch = '',
+    initialUnit = 'g',
+    initialAmount = '',
+    initialCreate = false,
+    onadd,
     products = $bindable<CatalogueProduct[]>([]),
     ingredients = $bindable<
       { product_id: string; quantity: number | null; unit: string }[]
     >([]),
+  }: {
+    products?: CatalogueProduct[];
+    ingredients?: {
+      product_id: string;
+      quantity: number | null;
+      unit: string;
+    }[];
+    initialSearch?: string;
+    initialUnit?: string;
+    initialAmount?: string;
+    initialCreate?: boolean;
+    onadd?: (ingredient: {
+      product_id: string;
+      quantity: number | null;
+      unit: string;
+    }) => void;
   } = $props();
-  let query = $state('');
+  const uid = $props.id();
+  let query = $state(untrack(() => initialSearch));
   let selected = $state<CatalogueProduct | null>(null);
   let unit = $state('');
-  let amount = $state('');
-  let expanded = $state(false);
+  let amount = $state(untrack(() => initialAmount));
+  let expanded = $state(untrack(() => !!initialSearch && !initialCreate));
   let activeIndex = $state(-1);
-  let creating = $state(false);
-  let name = $state('');
-  let units = $state<string[]>(['g']);
+  let creating = $state(untrack(() => initialCreate));
+  let name = $state(untrack(() => initialSearch));
+  let units = $state<string[]>(
+    untrack(() => [
+      initialUnit && initialUnit !== 'do smaku' ? initialUnit : 'g',
+    ]),
+  );
   let basis = $state('g');
   let values = $state(['', '', '', '']);
   let error = $state('');
@@ -97,12 +124,25 @@
   function choose(product: CatalogueProduct) {
     selected = product;
     query = product.name;
-    unit = product.units[0];
-    amount = '';
+    unit =
+      initialUnit === 'do smaku'
+        ? ''
+        : product.units.includes(initialUnit)
+          ? initialUnit
+          : product.units[0];
+    amount = initialAmount;
     expanded = false;
   }
   function add() {
     if (!selected || !canAdd) return;
+    if (onadd) {
+      onadd({
+        product_id: selected.id,
+        quantity: unit === '' ? null : number(amount),
+        unit,
+      });
+      return;
+    }
     ingredients = [
       ...ingredients,
       {
@@ -118,7 +158,7 @@
   }
   function openProduct() {
     name = query.trim();
-    units = ['g'];
+    units = [initialUnit && initialUnit !== 'do smaku' ? initialUnit : 'g'];
     basis = 'g';
     values = ['', '', '', ''];
     error = '';
@@ -168,14 +208,14 @@
       >
     </div>
   {/each}
-  <label for="product-search">Dodaj składnik z bazy produktów</label>
+  <label for={`${uid}-search`}>Dodaj składnik z bazy produktów</label>
   <input
-    id="product-search"
+    id={`${uid}-search`}
     role="combobox"
     aria-expanded={expanded}
-    aria-controls="product-results"
+    aria-controls={`${uid}-results`}
     aria-activedescendant={expanded && activeIndex >= 0
-      ? `product-option-${activeIndex}`
+      ? `${uid}-option-${activeIndex}`
       : undefined}
     autocomplete="off"
     placeholder="Szukaj produktu, np. mleko"
@@ -206,11 +246,11 @@
     }}
   />
   {#if expanded}
-    <div id="product-results" role="listbox" aria-label="Produkty">
+    <div id={`${uid}-results`} role="listbox" aria-label="Produkty">
       {#each matches as product, index (product.id)}<button
           type="button"
           role="option"
-          id={`product-option-${index}`}
+          id={`${uid}-option-${index}`}
           aria-selected={index === activeIndex}
           onclick={() => choose(product)}
           >{product.name}<small>jedn.: {product.units[0]}</small></button

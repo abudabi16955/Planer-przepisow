@@ -28,7 +28,9 @@
           ? 'Instagram'
           : recipe.source_platform === 'facebook'
             ? 'Facebook'
-            : null
+            : recipe.source_platform === 'www'
+              ? 'WWW'
+              : null
         : null,
   );
 </script>

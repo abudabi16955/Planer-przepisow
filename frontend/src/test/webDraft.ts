@@ -1,0 +1,36 @@
+import type { WebDraft } from '../lib/webImport';
+export const webDraft: WebDraft = {
+  title: 'Zupa ze strony',
+  category: 'obiad',
+  time_min: 45,
+  servings: 4,
+  steps: ['Gotuj.', 'Podaj.'],
+  kcal: 300,
+  protein: 12,
+  carbs: 40,
+  fat: 8,
+  photo_url: null,
+  source_url: 'https://recipes.example/zupa',
+  source_host: 'recipes.example',
+  notes: ['<img src=x onerror=alert(1)> Sprawdź ilości.'],
+  ingredients: [
+    {
+      raw: '200 g produktu',
+      qty: 200,
+      unit: 'g',
+      name: 'Produkt',
+      product_id: 'product',
+      match: 'exact',
+      unit_ok: true,
+    },
+    {
+      raw: '2 sztuki nieznanego',
+      qty: 2,
+      unit: 'szt.',
+      name: 'Nieznany',
+      product_id: null,
+      match: 'none',
+      unit_ok: null,
+    },
+  ],
+};

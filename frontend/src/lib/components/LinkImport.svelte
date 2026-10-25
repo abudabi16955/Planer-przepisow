@@ -8,6 +8,12 @@
     ImportRequestError,
     type ImportJob,
   } from '../importApi';
+  import {
+    recipeLink,
+    requestWebImport,
+    webImportError,
+    type WebDraft,
+  } from '../webImport';
   import { formatFileSize } from '../domain/format';
   import { showToast } from '../toast';
   let {
@@ -15,14 +21,18 @@
     active = true,
     disabled = false,
     onchange,
+    onweb = () => {},
   }: {
     initialRecipe?: Recipe;
     active?: boolean;
     disabled?: boolean;
     onchange: (job: ImportJob | null) => void;
+    onweb?: (draft: WebDraft | null) => void;
   } = $props();
   let url = $state(untrack(() => initialRecipe?.source_url || ''));
   let enabled = $state<boolean | null>(null);
+  let webEnabled = $state(false);
+  let webDone = $state(false);
   let configError = $state(false);
   let maxVideoMb = $state(300);
   let job = $state<ImportJob | null>(null);
@@ -33,6 +43,8 @@
   let controller: AbortController | undefined;
   let configController: AbortController | undefined;
   let timer: ReturnType<typeof setTimeout> | undefined;
+  const link = $derived(recipeLink(url));
+  const isWeb = $derived(link?.kind === 'web');
   const platform = $derived(importPlatform(url));
   const existing = $derived(!changed && initialRecipe?.video);
   function cancel() {
@@ -47,6 +59,8 @@
     error = '';
     changed = true;
     onchange(null);
+    onweb(null);
+    webDone = false;
   }
   async function config() {
     configController?.abort();
@@ -59,6 +73,7 @@
       const result = await response.json();
       if (request.signal.aborted) return;
       enabled = result.import_enabled === true;
+      webEnabled = result.web_import_enabled === true;
       if (Number.isFinite(result.max_video_mb) && result.max_video_mb > 0)
         maxVideoMb = result.max_video_mb;
     } catch {
@@ -79,13 +94,15 @@
         busy = false;
         job = null;
         onchange(null);
+        onweb(null);
       }
     }
   });
   function failed(code: string) {
     busy = false;
-    error =
-      code === 'too_large'
+    error = isWeb
+      ? webImportError(code)
+      : code === 'too_large'
         ? `Wideo jest za duże (limit ${maxVideoMb} MB).`
         : code === 'unavailable'
           ? 'Pobieranie z linku jest chwilowo niedostępne.'
@@ -121,17 +138,23 @@
     }
   }
   async function start() {
-    if (!platform) {
-      showToast('Wklej link z Instagrama lub Facebooka');
+    if (!link) {
+      showToast('Wklej poprawny link do przepisu');
       return;
     }
-    if (!enabled || disabled || busy) return;
+    if (!(isWeb ? webEnabled : enabled) || disabled || busy) return;
     reset();
     busy = true;
     controller = new AbortController();
     const token = generation;
     try {
-      accept(await requestImport(url, controller.signal), token);
+      if (isWeb) {
+        const draft = await requestWebImport(url, controller.signal);
+        if (token !== generation) return;
+        busy = false;
+        webDone = true;
+        onweb(draft);
+      } else accept(await requestImport(url, controller.signal), token);
     } catch (reason) {
       if (token === generation)
         failed(reason instanceof ImportRequestError ? reason.code : 'network');
@@ -152,11 +175,13 @@
     /></label
   >
   <p class="note">
-    Działa tylko z postami publicznymi. Wideo i opis posta zapisują się w
-    aplikacji.
+    Instagram, Facebook (posty publiczne) lub strona z przepisem
   </p>
-  {#if enabled === false && !existing}<p>
+  {#if enabled === false && !existing && !isWeb}<p>
       Pobieranie z linku jest chwilowo niedostępne.
+    </p>{/if}
+  {#if isWeb && !webEnabled && enabled !== null}<p>
+      Pobieranie ze stron jest chwilowo niedostępne.
     </p>{/if}
   {#if configError}<div role="alert">
       Brak połączenia z serwerem.<button type="button" onclick={config}
@@ -164,13 +189,18 @@
       >
     </div>
   {:else if busy}<div role="status">
-      Pobieram wideo z {platform}…
+      {isWeb
+        ? `Pobieram przepis z ${link?.host}…`
+        : `Pobieram wideo z ${platform}…`}
       <div class="track"><span></span></div>
     </div>
   {:else if error}<div class="error" role="alert">
       <p>{error}</p>
       <button type="button" {disabled} onclick={start}>Spróbuj ponownie</button>
     </div>
+  {:else if webDone}<p role="status">
+      Przejrzyj składniki i uzupełnij przepis.
+    </p>
   {:else if job || existing}
     {@const attachment = job?.video || existing}
     <div class="success">
@@ -194,11 +224,14 @@
           </p>{/if}
       </div>
     </div>
-  {:else if enabled}<button
+  {:else if isWeb ? webEnabled : enabled || (!link && webEnabled)}<button
       class="download"
       type="button"
       {disabled}
-      onclick={start}>Pobierz wideo i opis</button
+      onclick={start}
+      >{isWeb || (!enabled && webEnabled)
+        ? 'Pobierz przepis ze strony'
+        : 'Pobierz wideo i opis'}</button
     >{/if}
 </div>
 
