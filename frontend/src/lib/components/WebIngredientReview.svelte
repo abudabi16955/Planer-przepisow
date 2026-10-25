@@ -62,6 +62,7 @@
         {#if product}
           <button
             type="button"
+            class="secondary-accent"
             aria-label={`Edytuj produkt: ${product.name}`}
             onclick={() => {
               editing = null;
@@ -138,6 +139,7 @@
           >
           <button
             type="button"
+            class="secondary-accent"
             aria-label={`Dodaj „${row.name}” jako nowy produkt`}
             onclick={() => {
               editingProduct = null;
@@ -256,6 +258,18 @@
     border-radius: 12px;
     background: var(--accent-light);
     margin: 4px;
+  }
+  button.secondary-accent {
+    border: 1.5px solid var(--accent);
+    border-radius: 12px;
+    background: var(--white);
+    color: var(--accent);
+    font-weight: 600;
+    min-height: 44px;
+    padding: 10px 16px;
+  }
+  button.secondary-accent:hover:not(:disabled) {
+    background: var(--accent-light);
   }
   .chips {
     display: flex;

@@ -234,3 +234,72 @@ test('podczas zapisu nie zamyka edycji przez Anuluj ani Escape', async () => {
   resolve(Response.json(products[0]));
   await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
 });
+
+test('modal dialog ma role dialog, aria-modal, wstępny fokus na pierwszym polu, zamykanie przez ✕ i tło oraz pułapkę Tab', async () => {
+  render(IngredientPicker, { products });
+  await fireEvent.input(screen.getByRole('combobox'), {
+    target: { value: 'Produkt' },
+  });
+  await fireEvent.click(screen.getByRole('option', { name: /Produkt/ }));
+  const editBtn = screen.getByRole('button', {
+    name: 'Edytuj produkt: Produkt',
+  });
+  editBtn.focus();
+  await fireEvent.click(editBtn);
+
+  const dialogElement = screen.getByRole('dialog', { name: 'Edytuj produkt' });
+  expect(dialogElement.getAttribute('aria-modal')).toBe('true');
+  const nameInput = within(dialogElement).getByLabelText('Nazwa produktu');
+  expect(document.activeElement).toBe(nameInput);
+
+  // Pułapka Tab: z ostatniego elementu Tab przenosi do pierwszego (przycisk ✕)
+  const saveBtn = within(dialogElement).getByRole('button', {
+    name: 'Zapisz zmiany',
+  });
+  saveBtn.focus();
+  expect(document.activeElement).toBe(saveBtn);
+  await fireEvent.keyDown(saveBtn, { key: 'Tab' });
+  const closeBtn = within(dialogElement).getByRole('button', {
+    name: 'Zamknij',
+  });
+  expect(document.activeElement).toBe(closeBtn);
+
+  // Shift+Tab z pierwszego elementu przenosi do ostatniego
+  await fireEvent.keyDown(closeBtn, { key: 'Tab', shiftKey: true });
+  expect(document.activeElement).toBe(saveBtn);
+
+  // Zamykanie przez ✕ przywraca fokus na przycisk otwierający
+  await fireEvent.click(closeBtn);
+  expect(screen.queryByRole('dialog')).toBeNull();
+  expect(document.activeElement).toBe(editBtn);
+
+  // Kliknięcie tła zamyka modal
+  await fireEvent.click(editBtn);
+  expect(screen.getByRole('dialog', { name: 'Edytuj produkt' })).toBeTruthy();
+  const backdrop = document.querySelector('.backdrop') as HTMLButtonElement;
+  expect(backdrop).toBeTruthy();
+  await fireEvent.click(backdrop);
+  expect(screen.queryByRole('dialog')).toBeNull();
+});
+
+test('modal nowego produktu z comboboxa ma role dialog, aria-modal i zamyka się przez Escape', async () => {
+  render(IngredientPicker, { products });
+  await fireEvent.input(screen.getByRole('combobox'), {
+    target: { value: 'Nowy' },
+  });
+  const addBtn = screen.getByRole('button', {
+    name: 'Nie ma na liście? Dodaj „Nowy” jako nowy produkt',
+  });
+  addBtn.focus();
+  await fireEvent.click(addBtn);
+
+  const dialogElement = screen.getByRole('dialog', { name: 'Nowy produkt' });
+  expect(dialogElement.getAttribute('aria-modal')).toBe('true');
+  const nameInput = within(dialogElement).getByLabelText('Nazwa produktu');
+  expect(document.activeElement).toBe(nameInput);
+
+  // Escape zamyka modal
+  await fireEvent.keyDown(nameInput, { key: 'Escape' });
+  expect(screen.queryByRole('dialog')).toBeNull();
+  expect(document.activeElement).toBe(screen.getByRole('combobox'));
+});
