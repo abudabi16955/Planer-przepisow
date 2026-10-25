@@ -12,6 +12,7 @@
     initialEdit,
     editorOnly = false,
     onclose = () => {},
+    onsave,
     onadd,
     onselect,
     products = $bindable<CatalogueProduct[]>([]),
@@ -33,6 +34,7 @@
     initialEdit?: CatalogueProduct;
     editorOnly?: boolean;
     onclose?: () => void;
+    onsave?: (product: CatalogueProduct) => void;
     onselect?: (ingredient: {
       product_id: string;
       quantity: number | null;
@@ -77,6 +79,16 @@
       ].map((value) => value?.toString() ?? ''),
     ),
   );
+  let conversions = $state<Record<string, string>>(
+    untrack(() =>
+      Object.fromEntries(
+        Object.entries(initialEdit?.unit_conversions ?? {}).map(([k, v]) => [
+          k,
+          v?.toString() ?? '',
+        ]),
+      ),
+    ),
+  );
   let error = $state('');
   let pending = $state(false);
   const options = [
@@ -115,6 +127,19 @@
     selected &&
       (unit === '' || (Number.isFinite(number(amount)) && number(amount)! > 0)),
   );
+  const needsConversion = (u: string, b: string | null) => {
+    if (!b) return false;
+    if (u === b) return false;
+    if (b === 'g' && u === 'kg') return false;
+    if (b === 'ml' && u === 'l') return false;
+    if (b === 'ml' && (u === 'łyżka' || u === 'łyżeczka' || u === 'szklanka'))
+      return false;
+    return true;
+  };
+  const conversionUnits = $derived(
+    units.filter((u) => needsConversion(u, basis)),
+  );
+
   function focusPanel(node: HTMLElement) {
     const previous = document.activeElement as HTMLElement | null;
     const previousOverflow = document.body.style.overflow;
@@ -238,6 +263,12 @@
     values = [product.kcal, product.protein, product.carbs, product.fat].map(
       (value) => value?.toString() ?? '',
     );
+    conversions = Object.fromEntries(
+      Object.entries(product.unit_conversions ?? {}).map(([k, v]) => [
+        k,
+        v?.toString() ?? '',
+      ]),
+    );
     error = '';
     expanded = false;
     creating = true;
@@ -248,6 +279,7 @@
     units = [initialUnit && initialUnit !== 'do smaku' ? initialUnit : 'g'];
     basis = 'g';
     values = ['', '', '', ''];
+    conversions = {};
     error = '';
     creating = true;
     expanded = false;
@@ -264,6 +296,20 @@
     const target = editing;
     pending = true;
     error = '';
+
+    const unitConversionsPayload: Record<string, number> = {};
+    if (basis) {
+      for (const u of conversionUnits) {
+        const raw = conversions[u];
+        if (raw !== undefined && raw.trim()) {
+          const val = number(raw);
+          if (val !== null && val > 0) {
+            unitConversionsPayload[u] = val;
+          }
+        }
+      }
+    }
+
     try {
       const product = await post<CatalogueProduct>(
         target
@@ -271,7 +317,8 @@
           : '/api/products',
         {
           name: name.trim(),
-          ...(target ? {} : { units }),
+          units,
+          unit_conversions: unitConversionsPayload,
           nutrition_basis: target
             ? basis || null
             : values.some((v) => number(v) !== null)
@@ -298,6 +345,7 @@
         choose(product);
         showToast(`Dodano produkt do bazy: ${product.name}`);
       }
+      onsave?.(product);
       closePanel(true);
     } catch (e) {
       error =
@@ -450,21 +498,20 @@
           {#if duplicate}<p role="alert">
               Produkt o tej nazwie już istnieje.
             </p>{/if}
-          {#if !editing}<p class="units-label">
-              W jakich jednostkach go dodajesz? (pierwsza wybrana jest domyślna)
-            </p>
-            <div class="chips">
-              {#each options as option (option)}<button
-                  type="button"
-                  aria-pressed={units.includes(option)}
-                  class:active={units.includes(option)}
-                  onclick={() =>
-                    (units = units.includes(option)
-                      ? units.filter((u) => u !== option)
-                      : [...units, option])}>{option}</button
-                >{/each}
-            </div>
-          {/if}
+          <p class="units-label">
+            W jakich jednostkach go dodajesz? (pierwsza wybrana jest domyślna)
+          </p>
+          <div class="chips">
+            {#each options as option (option)}<button
+                type="button"
+                aria-pressed={units.includes(option)}
+                class:active={units.includes(option)}
+                onclick={() =>
+                  (units = units.includes(option)
+                    ? units.filter((u) => u !== option)
+                    : [...units, option])}>{option}</button
+              >{/each}
+          </div>
           <h3>Wartości odżywcze (opcjonalnie)</h3>
           <div class="chips">
             {#each editing ? ['', 'g', 'ml', 'szt.'] : ['g', 'ml', 'szt.'] as option (option)}<button
@@ -491,6 +538,31 @@
             Bez wartości odżywczych produkt zapisze się w przepisie, ale nie
             wliczy się do kalorii i makro.
           </p>
+          {#if conversionUnits.length > 0}
+            <div class="conversions">
+              {#each conversionUnits as convUnit (convUnit)}
+                <div class="conversion-item">
+                  <div class="conversion-field">
+                    <label for={`conv-${uid}-${convUnit}`}>1 {convUnit} =</label
+                    >
+                    <div class="conversion-input-wrap">
+                      <input
+                        id={`conv-${uid}-${convUnit}`}
+                        type="text"
+                        inputmode="decimal"
+                        placeholder="opcjonalnie"
+                        bind:value={conversions[convUnit]}
+                      />
+                      <span class="unit-suffix">{basis}</span>
+                    </div>
+                  </div>
+                  <p class="conversion-hint">
+                    Bez przelicznika ta jednostka nie wliczy się do kalorii.
+                  </p>
+                </div>
+              {/each}
+            </div>
+          {/if}
           {#if error}<p role="alert">{error}</p>{/if}
         </div>
 
@@ -623,6 +695,46 @@
   }
   .macro-note {
     margin: 8px 0 0;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .conversions {
+    margin-top: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .conversion-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .conversion-field {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .conversion-field label {
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .conversion-input-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+  }
+  .conversion-input-wrap input {
+    margin-top: 0;
+    max-width: 140px;
+    padding: 10px 14px;
+  }
+  .unit-suffix {
+    font-weight: 600;
+    color: var(--text);
+  }
+  .conversion-hint {
+    margin: 0;
     font-size: 13px;
     color: var(--muted);
   }

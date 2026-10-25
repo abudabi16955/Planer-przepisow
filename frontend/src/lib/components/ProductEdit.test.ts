@@ -13,10 +13,14 @@ import RecipeForm from './RecipeForm.svelte';
 import { toast } from '../toast';
 import { products, recipes } from '../../test/recipes';
 import { webDraft } from '../../test/webDraft';
+
 let conflict: boolean;
+let conflictMessage: string | undefined;
 let saved: Record<string, unknown> | undefined;
+
 beforeEach(() => {
   conflict = false;
+  conflictMessage = undefined;
   saved = undefined;
   vi.stubGlobal(
     'fetch',
@@ -36,7 +40,9 @@ beforeEach(() => {
         saved = JSON.parse(options.body as string);
         return conflict
           ? Response.json(
-              { detail: 'Produkt o tej nazwie już istnieje.' },
+              {
+                detail: conflictMessage || 'Produkt o tej nazwie już istnieje.',
+              },
               { status: 409 },
             )
           : Response.json({ ...products[0], ...saved });
@@ -45,10 +51,12 @@ beforeEach(() => {
     }),
   );
 });
+
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
 });
+
 async function chooseAndEdit() {
   await fireEvent.input(screen.getByRole('combobox'), {
     target: { value: 'Produkt' },
@@ -59,6 +67,7 @@ async function chooseAndEdit() {
   );
   return within(screen.getByRole('dialog', { name: 'Edytuj produkt' }));
 }
+
 test('prefill i zapis aktualizują nazwę od razu, zachowują jednostki i ilość', async () => {
   render(IngredientPicker, { products, initialAmount: '5' });
   const dialog = await chooseAndEdit();
@@ -73,10 +82,10 @@ test('prefill i zapis aktualizują nazwę od razu, zachowują jednostki i iloś�
     dialog.getByText('Zmiana dotyczy wszystkich przepisów z tym produktem.'),
   ).toBeTruthy();
   expect(
-    dialog.queryByText(
+    dialog.getByText(
       'W jakich jednostkach go dodajesz? (pierwsza wybrana jest domyślna)',
     ),
-  ).toBeNull();
+  ).toBeTruthy();
   await fireEvent.input(dialog.getByLabelText('Nazwa produktu'), {
     target: { value: 'Poprawiony produkt' },
   });
@@ -87,6 +96,8 @@ test('prefill i zapis aktualizują nazwę od razu, zachowują jednostki i iloś�
   await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
   expect(saved).toEqual({
     name: 'Poprawiony produkt',
+    units: ['g'],
+    unit_conversions: {},
     nutrition_basis: 'g',
     kcal: 660,
     protein: 10,
@@ -102,6 +113,7 @@ test('prefill i zapis aktualizują nazwę od razu, zachowują jednostki i iloś�
   expect((screen.getByLabelText('Ilość') as HTMLInputElement).value).toBe('5');
   expect(get(toast)?.message).toBe('Zapisano produkt: Poprawiony produkt');
 });
+
 test('duplikat blokuje zapis, własna nazwa nie; anulowanie nie wysyła PUT', async () => {
   render(IngredientPicker, {
     products: [...products, { ...products[0], id: 'other', name: 'Inny' }],
@@ -125,6 +137,7 @@ test('duplikat blokuje zapis, własna nazwa nie; anulowanie nie wysyła PUT', as
     'Produkt',
   );
 });
+
 test('409 z serwera pozostawia formularz i pokazuje komunikat', async () => {
   conflict = true;
   render(IngredientPicker, { products });
@@ -138,6 +151,7 @@ test('409 z serwera pozostawia formularz i pokazuje komunikat', async () => {
   ).toBeTruthy();
   expect(screen.getByRole('dialog', { name: 'Edytuj produkt' })).toBeTruthy();
 });
+
 test('brak podstawy pozwala wyczyścić odżywienie', async () => {
   render(IngredientPicker, { products });
   const dialog = await chooseAndEdit();
@@ -146,6 +160,8 @@ test('brak podstawy pozwala wyczyścić odżywienie', async () => {
   await waitFor(() =>
     expect(saved).toEqual({
       name: 'Produkt',
+      units: ['g'],
+      unit_conversions: {},
       nutrition_basis: null,
       kcal: null,
       protein: null,
@@ -154,6 +170,80 @@ test('brak podstawy pozwala wyczyścić odżywienie', async () => {
     }),
   );
 });
+
+test('edycja jednostek i przelicznika: dodanie łyżki i przelicznika wysyła je w PUT', async () => {
+  render(IngredientPicker, { products });
+  const dialog = await chooseAndEdit();
+
+  // Dodajemy jednostkę 'łyżka'
+  await fireEvent.click(dialog.getByRole('button', { name: 'łyżka' }));
+
+  // Pojawia się pole przelicznika
+  expect(dialog.getByLabelText('1 łyżka =')).toBeTruthy();
+  expect(
+    dialog.getByText(
+      'Bez przelicznika ta jednostka nie wliczy się do kalorii.',
+    ),
+  ).toBeTruthy();
+
+  await fireEvent.input(dialog.getByLabelText('1 łyżka ='), {
+    target: { value: '10' },
+  });
+
+  await fireEvent.click(dialog.getByRole('button', { name: 'Zapisz zmiany' }));
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+
+  expect(saved).toEqual({
+    name: 'Produkt',
+    units: ['g', 'łyżka'],
+    unit_conversions: { łyżka: 10 },
+    nutrition_basis: 'g',
+    kcal: 330,
+    protein: 10,
+    carbs: 20,
+    fat: 2,
+  });
+});
+
+test('odznaczenie wszystkich jednostek blokuje przycisk zapisu', async () => {
+  render(IngredientPicker, { products });
+  const dialog = await chooseAndEdit();
+
+  const save = dialog.getByRole('button', {
+    name: 'Zapisz zmiany',
+  }) as HTMLButtonElement;
+  expect(save.disabled).toBe(false);
+
+  // Odznaczamy 'g' (jedyną jednostkę produktu)
+  await fireEvent.click(dialog.getByRole('button', { name: 'g' }));
+  expect(save.disabled).toBe(true);
+
+  // Dodajemy 'szt.'
+  await fireEvent.click(dialog.getByRole('button', { name: 'szt.' }));
+  expect(save.disabled).toBe(false);
+});
+
+test('409 z serwera przy usunięciu jednostki używanej w przepisach pokazuje szczegółowy błąd', async () => {
+  conflict = true;
+  conflictMessage =
+    'Jednostka „g” jest używana w przepisach (3). Najpierw zmień je w przepisach.';
+  render(IngredientPicker, { products });
+  const dialog = await chooseAndEdit();
+
+  // Dodajemy szt. i usuwamy g
+  await fireEvent.click(dialog.getByRole('button', { name: 'szt.' }));
+  await fireEvent.click(dialog.getByRole('button', { name: 'g' }));
+
+  await fireEvent.click(dialog.getByRole('button', { name: 'Zapisz zmiany' }));
+
+  expect(
+    await dialog.findByText(
+      'Jednostka „g” jest używana w przepisach (3). Najpierw zmień je w przepisach.',
+    ),
+  ).toBeTruthy();
+  expect(screen.getByRole('dialog', { name: 'Edytuj produkt' })).toBeTruthy();
+});
+
 test('edycja z dopasowanego wiersza importu odświeża nazwę bez zmiany zatwierdzenia', async () => {
   render(RecipeForm, { onSave: vi.fn(async () => recipes[0]) });
   await screen.findByRole('button', { name: 'Pobierz wideo i opis' });
@@ -178,6 +268,81 @@ test('edycja z dopasowanego wiersza importu odświeża nazwę bez zmiany zatwier
   ).toBeTruthy();
   expect(screen.getByText('Zatwierdzone: 1 z 1')).toBeTruthy();
 });
+
+test('edycja produktu z importu natychmiast dopasowuje wiersz z niepasującą jednostką (kryterium 7)', async () => {
+  vi.mocked(fetch).mockImplementation(
+    async (input: RequestInfo | URL, options?: RequestInit) => {
+      const url =
+        typeof input === 'string'
+          ? input
+          : 'url' in input
+            ? input.url
+            : input.toString();
+      if (url === '/api/config')
+        return Response.json({
+          import_enabled: true,
+          web_import_enabled: true,
+        });
+      if (url === '/api/products') return Response.json(products);
+      if (url === '/api/web-import')
+        return Response.json({
+          ...webDraft,
+          ingredients: [
+            {
+              name: 'Produkt',
+              product_id: 'product',
+              qty: 2,
+              unit: 'łyżka',
+              unit_ok: false,
+              confirmed: false,
+              quantity_variants: [{ qty: 2, unit: 'łyżka' }],
+            },
+          ],
+        });
+      if (url === '/api/products/product' && options?.method === 'PUT') {
+        saved = JSON.parse(options.body as string);
+        return Response.json({ ...products[0], ...saved });
+      }
+      throw new Error(`Unexpected ${url}`);
+    },
+  );
+
+  render(RecipeForm, { onSave: vi.fn(async () => recipes[0]) });
+  await screen.findByRole('button', { name: 'Pobierz wideo i opis' });
+  await fireEvent.input(screen.getByLabelText('Link do posta lub reela'), {
+    target: { value: webDraft.source_url },
+  });
+  await fireEvent.click(
+    screen.getByRole('button', { name: 'Pobierz przepis ze strony' }),
+  );
+
+  // Wiersz ma błąd jednostki
+  expect(await screen.findByText('Wybierz jednostkę produktu.')).toBeTruthy();
+
+  // Klikamy Edytuj produkt
+  await fireEvent.click(
+    screen.getByRole('button', { name: 'Edytuj produkt: Produkt' }),
+  );
+  const dialog = within(screen.getByRole('dialog', { name: 'Edytuj produkt' }));
+
+  // Dodajemy jednostkę 'łyżka' i przelicznik 10 g
+  await fireEvent.click(dialog.getByRole('button', { name: 'łyżka' }));
+  await fireEvent.input(dialog.getByLabelText('1 łyżka ='), {
+    target: { value: '10' },
+  });
+  await fireEvent.click(dialog.getByRole('button', { name: 'Zapisz zmiany' }));
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+
+  // Błąd jednostki zniknął, przycisk zatwierdzenia jest aktywny
+  expect(screen.queryByText('Wybierz jednostkę produktu.')).toBeNull();
+  const confirmBtn = screen.getByRole('button', {
+    name: 'Zatwierdź składnik: Produkt',
+  }) as HTMLButtonElement;
+  expect(confirmBtn.disabled).toBe(false);
+  // Status confirmed to nadal false (wymaga kliknięcia)
+  expect(screen.getByText('Zatwierdzone: 0 z 1')).toBeTruthy();
+});
+
 test('podpowiedź makro korzysta z nowych danych produktu bez zapisania kopii do pól przepisu', async () => {
   const recipe = {
     ...recipes[0],

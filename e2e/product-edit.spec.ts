@@ -174,3 +174,111 @@ test('modal nowego produktu jest wyśrodkowanym pop-upem, ma czytelny przycisk A
   await page.locator('.backdrop').click({ position: { x: 10, y: 10 } });
   await expect(newDialog).toHaveCount(0);
 });
+
+test('scenariusz z papryką słodką: edycja jednostek, przelicznik łyżki i wyliczenie kalorii w przepisie', async ({
+  page,
+  request,
+}) => {
+  const productName = `Papryka słodka ${crypto.randomUUID().slice(0, 8)}`;
+  const recipeTitle = `Gulasz z papryką ${crypto.randomUUID().slice(0, 8)}`;
+
+  // 1. Tworzymy produkt: Papryka słodka na 100 g, 282 kcal, jednostka początkowa: g
+  const productResponse = await request.post('/api/products', {
+    data: {
+      name: productName,
+      units: ['g'],
+      nutrition_basis: 'g',
+      kcal: 282,
+      protein: 14.1,
+      carbs: 54,
+      fat: 12.9,
+    },
+  });
+  expect(productResponse.status()).toBe(201);
+  const product = await productResponse.json();
+
+  let createdRecipeId: string | null = null;
+  try {
+    // 2. Wchodzimy do formularza dodawania przepisu
+    await page.goto('/dodaj');
+    await page.getByRole('tab', { name: 'Ręcznie', exact: true }).click();
+
+    await page.getByLabel('Nazwa', { exact: true }).fill(recipeTitle);
+    await page.getByRole('button', { name: 'Obiad', exact: true }).click();
+    await page.getByLabel('Porcje', { exact: true }).fill('1');
+
+    // Wybieramy paprykę słodką w wyszukiwarce składników
+    await page.getByRole('combobox').fill(productName);
+    await page.getByRole('option').filter({ hasText: productName }).click();
+
+    // Klikamy Edytuj produkt
+    const editBtn = page.getByRole('button', {
+      name: `Edytuj produkt: ${productName}`,
+      exact: true,
+    });
+    await expect(editBtn).toBeVisible();
+    await editBtn.click();
+
+    const dialog = page.getByRole('dialog', {
+      name: 'Edytuj produkt',
+      exact: true,
+    });
+    await expect(dialog).toBeVisible();
+
+    // Dodajemy jednostkę 'łyżka'
+    await dialog.getByRole('button', { name: 'łyżka', exact: true }).click();
+
+    // Uzupełniamy przelicznik: 1 łyżka = 10 g
+    const convInput = dialog.getByLabel('1 łyżka =', { exact: true });
+    await expect(convInput).toBeVisible();
+    await convInput.fill('10');
+
+    // Zapisujemy zmiany w produkcie
+    const updateResponse = page.waitForResponse(
+      (res) =>
+        res.url().endsWith(`/api/products/${product.id}`) &&
+        res.request().method() === 'PUT',
+    );
+    await dialog
+      .getByRole('button', { name: 'Zapisz zmiany', exact: true })
+      .click();
+    expect((await updateResponse).status()).toBe(200);
+    await expect(dialog).toHaveCount(0);
+
+    // Wybieramy jednostkę łyżka w dodawanym składniku
+    await page
+      .getByRole('button', { name: 'łyżka', exact: true })
+      .click();
+    await page.getByLabel('Ilość', { exact: true }).fill('2');
+    await page.getByRole('button', { name: 'Dodaj składnik', exact: true }).click();
+
+    // Zapisujemy przepis
+    const recipeCreate = page.waitForResponse(
+      (res) =>
+        res.url().endsWith('/api/recipes') && res.request().method() === 'POST',
+    );
+    await page
+      .getByRole('button', { name: 'Zapisz przepis', exact: true })
+      .click();
+    const createdRes = await recipeCreate;
+    expect(createdRes.status()).toBe(201);
+    const recipe = await createdRes.json();
+    createdRecipeId = recipe.id;
+
+    // 3. Sprawdzamy szczegóły przepisu (/przepis/{id}): 2 łyżki to 20 g = 56.4 kcal -> 56 kcal
+    await page.goto(`/przepis/${createdRecipeId}`);
+    await expect(page.locator('.kcal')).toHaveText('56');
+
+    // 4. Sprawdzamy na liście przepisów (/) w kafelku
+    await page.goto('/');
+    const card = page.getByRole('button', {
+      name: new RegExp(`(Pokaż|Otwórz) przepis: ${recipeTitle}`),
+    });
+    await expect(card).toBeVisible();
+    await expect(card).toContainText('56 kcal');
+  } finally {
+    if (createdRecipeId) {
+      await request.delete(`/api/recipes/${createdRecipeId}`);
+    }
+  }
+});

@@ -9,6 +9,7 @@ export interface WebIngredient {
   product_id: string | null;
   match: 'exact' | 'fuzzy' | 'none';
   unit_ok: boolean | null;
+  quantity_variants?: { qty: number | null; unit: string }[];
 }
 export interface ReviewIngredient extends WebIngredient {
   confirmed: boolean;

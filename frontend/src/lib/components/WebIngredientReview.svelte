@@ -31,6 +31,35 @@
     };
     editing = null;
   }
+  function updateImportRowsForProduct(updated: CatalogueProduct) {
+    rows = rows.map((row, i) => {
+      if (row.product_id === updated.id && row.unit_ok === false) {
+        if (updated.units.includes(row.unit) || row.unit === 'do smaku') {
+          delete amounts[i];
+          return {
+            ...row,
+            unit_ok: true,
+          };
+        }
+        if (row.quantity_variants && row.quantity_variants.length > 0) {
+          const match = row.quantity_variants.find(
+            (v: { qty: number | null; unit: string }) =>
+              updated.units.includes(v.unit),
+          );
+          if (match) {
+            delete amounts[i];
+            return {
+              ...row,
+              unit: match.unit,
+              qty: match.qty,
+              unit_ok: true,
+            };
+          }
+        }
+      }
+      return row;
+    });
+  }
 </script>
 
 <section aria-label="Przegląd składników">
@@ -157,6 +186,7 @@
             bind:products
             initialEdit={product}
             editorOnly
+            onsave={(updated) => updateImportRowsForProduct(updated)}
             onclose={() => (editingProduct = null)}
           />
         {/if}
@@ -185,102 +215,103 @@
 
 <style>
   section {
-    padding: 20px;
-    border-radius: 24px;
-    background: var(--white);
-    margin-bottom: 16px;
-  }
-  h2 {
-    font: 700 20px var(--font-heading);
-    margin: 0 0 16px;
-  }
-  .review-row {
-    border-bottom: 1px solid var(--border);
-    padding: 16px 12px;
-    border-left: 4px solid transparent;
-    border-radius: 12px;
-    margin-top: 8px;
-    overflow-wrap: anywhere;
-  }
-  .pending {
-    border-left-color: var(--warning);
-    background: color-mix(in srgb, var(--warning) 8%, var(--white));
-  }
-  .approved {
-    background: var(--white);
-  }
-  .accepted {
-    color: var(--accent);
-  }
-  .state {
-    margin-left: 8px;
-    font-weight: 700;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
   }
   .review-count {
+    margin: 0;
     color: var(--muted);
-    margin: 0 0 16px;
   }
-  button.primary {
-    background: var(--accent);
-    color: var(--white);
+  .review-row {
+    background: var(--white);
+    border-radius: 16px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    border: 1px solid var(--border);
   }
-  .primary:disabled {
-    opacity: 0.5;
+  .review-row.pending {
+    border-left: 4px solid var(--warning);
   }
-  .raw {
-    color: var(--muted);
+  .review-row.approved {
+    border-left: 4px solid var(--accent);
+  }
+  .state {
     font-size: 13px;
-    white-space: pre-wrap;
+    font-weight: 600;
   }
-  .warning,
-  [role='alert'] {
+  .state.warning {
     color: var(--warning);
   }
-  .warning {
-    margin-left: 8px;
-  }
-  label {
-    display: block;
-    font-weight: 600;
-  }
-  input {
-    display: block;
-    width: 100%;
-    padding: 12px;
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    font: inherit;
-    margin: 8px 0;
-  }
-  button {
-    min-height: 44px;
-    padding: 10px 14px;
-    border-radius: 12px;
-    background: var(--accent-light);
-    margin: 4px;
-  }
-  button.secondary-accent {
-    border: 1.5px solid var(--accent);
-    border-radius: 12px;
-    background: var(--white);
+  .state.accepted {
     color: var(--accent);
-    font-weight: 600;
-    min-height: 44px;
-    padding: 10px 16px;
   }
-  button.secondary-accent:hover:not(:disabled) {
-    background: var(--accent-light);
+  .raw {
+    margin: 0;
+    color: var(--muted);
+    font-style: italic;
   }
   .chips {
     display: flex;
     flex-wrap: wrap;
+    gap: 6px;
   }
   .chips button {
+    padding: 6px 12px;
     border-radius: 999px;
     background: var(--gray);
+    font-size: 13px;
   }
-  [aria-pressed='true'] {
-    background: var(--accent) !important;
+  .chips button[aria-pressed='true'] {
+    background: var(--accent);
     color: white;
+  }
+  label {
+    font-weight: 600;
+  }
+  input {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-top: 4px;
+    font: inherit;
+  }
+  .primary {
+    background: var(--accent);
+    color: white;
+    padding: 12px;
+    border-radius: 12px;
+    font-weight: 700;
+  }
+  .primary:disabled {
+    background: var(--disabled);
+    color: var(--muted);
+    cursor: default;
+  }
+  .secondary-accent {
+    align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 38px;
+    padding: 6px 14px;
+    border: 1.5px solid var(--accent);
+    border-radius: 10px;
+    background: var(--white);
+    color: var(--accent);
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .secondary-accent:hover {
+    background: var(--accent-light);
+  }
+  [role='alert'] {
+    color: var(--warning);
+    font-size: 13px;
+    margin: 0;
   }
 </style>
