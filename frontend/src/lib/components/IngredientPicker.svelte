@@ -7,6 +7,7 @@
     initialSearch = '',
     initialUnit = 'g',
     initialAmount = '',
+    initialQuantity,
     initialCreate = false,
     onadd,
     products = $bindable<CatalogueProduct[]>([]),
@@ -23,6 +24,7 @@
     initialSearch?: string;
     initialUnit?: string;
     initialAmount?: string;
+    initialQuantity?: number | null;
     initialCreate?: boolean;
     onadd?: (ingredient: {
       product_id: string;
@@ -34,6 +36,7 @@
   let query = $state(untrack(() => initialSearch));
   let selected = $state<CatalogueProduct | null>(null);
   let unit = $state('');
+  let amountChanged = $state(false);
   let amount = $state(untrack(() => initialAmount));
   let expanded = $state(untrack(() => !!initialSearch && !initialCreate));
   let activeIndex = $state(-1);
@@ -131,6 +134,7 @@
           ? initialUnit
           : product.units[0];
     amount = initialAmount;
+    amountChanged = false;
     expanded = false;
   }
   function add() {
@@ -138,7 +142,12 @@
     if (onadd) {
       onadd({
         product_id: selected.id,
-        quantity: unit === '' ? null : number(amount),
+        quantity:
+          unit === ''
+            ? null
+            : !amountChanged && initialQuantity !== undefined
+              ? initialQuantity
+              : number(amount),
         unit,
       });
       return;
@@ -147,7 +156,12 @@
       ...ingredients,
       {
         product_id: selected.id,
-        quantity: unit === '' ? null : number(amount),
+        quantity:
+          unit === ''
+            ? null
+            : !amountChanged && initialQuantity !== undefined
+              ? initialQuantity
+              : number(amount),
         unit,
       },
     ];
@@ -273,6 +287,7 @@
         >Ilość<input
           inputmode="decimal"
           bind:value={amount}
+          oninput={() => (amountChanged = true)}
           placeholder="np. 1,5"
         /></label
       >{/if}

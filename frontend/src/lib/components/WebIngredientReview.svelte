@@ -1,16 +1,18 @@
 <script lang="ts">
   import type { CatalogueProduct } from '../api';
-  import type { ReviewIngredient } from '../webImport';
+  import { formatImportAmount, type ReviewIngredient } from '../webImport';
   import IngredientPicker from './IngredientPicker.svelte';
   let {
     rows = $bindable<ReviewIngredient[]>([]),
     products = $bindable<CatalogueProduct[]>([]),
   } = $props();
+  let amounts = $state<Record<number, string>>({});
   let editing = $state<{ index: number; create: boolean } | null>(null);
   function accept(
     index: number,
     ingredient: { product_id: string; quantity: number | null; unit: string },
   ) {
+    delete amounts[index];
     rows[index] = {
       ...rows[index],
       product_id: ingredient.product_id,
@@ -37,8 +39,9 @@
               >Ilość<input
                 aria-label={`Ilość: ${product.name}`}
                 inputmode="decimal"
-                value={row.qty ?? ''}
+                value={amounts[index] ?? formatImportAmount(row.qty)}
                 oninput={(event) => {
+                  amounts[index] = event.currentTarget.value;
                   const value = Number(
                     event.currentTarget.value.replace(',', '.'),
                   );
@@ -99,7 +102,8 @@
               bind:products
               initialSearch={row.name}
               initialUnit={row.unit}
-              initialAmount={row.qty?.toString() ?? ''}
+              initialAmount={formatImportAmount(row.qty)}
+              initialQuantity={row.qty}
               initialCreate={editing.create}
               onadd={(ingredient) => accept(index, ingredient)}
             />

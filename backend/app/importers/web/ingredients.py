@@ -57,9 +57,13 @@ UNITS = {
 UNIT_PATTERN = "|".join(re.escape(unit) for unit in sorted(UNITS, key=len, reverse=True))
 NUMBER = r"(?:\d+\s+\d+\s*/\s*\d+|\d+\s*/\s*\d+|\d+[.,]\d+|\d+|pół|ćwierć)"
 QUANTITY = re.compile(rf"(?<!\w)({NUMBER})(?:\s*[-–—]\s*({NUMBER}))?(?!\w)", re.IGNORECASE)
-UNIT = re.compile(
-    rf"^\s*(?:(?:płaski\w*|czubat\w*|kopiast\w*)\s+)?({UNIT_PATTERN})\.?(?=\W|$)", re.IGNORECASE
+DESCRIPTOR = (
+    r"(?:mał(?:y|a|e|ego|ej|ych|ą|ym|ymi)|średn(?:i|ia|ie|iego|iej|ich|ią|im|imi)"
+    r"|duż(?:y|a|e|ego|ej|ych|ą|ym|ymi)|spor(?:y|a|e|ego|ej|ych|ą|ym|ymi)"
+    r"|płask(?:i|a|ie|iego|iej|ich|ą|im|imi)|czubat(?:y|a|e|ego|ej|ych|ą|ym|ymi)"
+    r"|pełn(?:y|a|e|ego|ej|ych|ą|ym|ymi)|kopiast(?:y|a|e|ego|ej|ych|ą|ym|ymi)|garść|garści|garście|garściami)"
 )
+UNIT = re.compile(rf"^\s*(?:{DESCRIPTOR}\s+)*({UNIT_PATTERN})\.?(?=\W|$)", re.IGNORECASE)
 
 
 def amount(value):
@@ -97,7 +101,9 @@ def parse_ingredient(raw):
     if re.search(r"\bdo smaku\b", normalized):
         result["name"] = re.sub(r"\bdo smaku\b", "", text, flags=re.IGNORECASE).strip(" ,-")
         return result, notes
-    match = QUANTITY.search(normalized)
+    # Ignore parenthetical comments for the primary amount, retaining string offsets.
+    quantity_text = re.sub(r"\([^)]*\)", lambda item: " " * len(item[0]), normalized)
+    match = QUANTITY.search(quantity_text)
     if not match:
         notes.append(f"Sprawdź ilość składnika: {text}.")
         return result, notes
@@ -110,7 +116,7 @@ def parse_ingredient(raw):
         return result, notes
     if match[2]:
         notes.append(f"Zakres ilości: przyjęto górną wartość dla „{text}”.")
-    suffix = normalized[match.end() :]
+    suffix = quantity_text[match.end() :]
     unit_match = UNIT.match(suffix)
     unit = UNITS[unit_match[1]] if unit_match else "szt."
     start, end = match.span()
@@ -121,9 +127,39 @@ def parse_ingredient(raw):
             notes.append(f"Przeliczono dekagramy na gramy: {text}.")
         if unit_match[1].startswith("ząb"):
             notes.append(f"Ząbki zapisano jako sztuki; sprawdź jednostkę: {text}.")
-    name = (normalized[:start] + " " + normalized[end:]).strip(" ,:–—-")
-    name = re.sub(r"^po\s+", "", name)
-    name = re.sub(r"\s*[-–—]\s*\d.*$", "", name).strip()
+    prefix = re.sub(rf"(?:\b{DESCRIPTOR}\s*)+$", "", quantity_text[:start])
+    suffix = re.sub(rf"^(?:\s*{DESCRIPTOR}\b)+", "", quantity_text[end:])
+    name = (prefix + " " + suffix).strip(" ,:–—-")
+    name = re.sub(r"^(?:(?:po|do|około|ok\.)\s+)+", "", name)
+    name = re.split(r"\s+[-–—]\s+|\s*[-–—]\s*(?=\d|u mnie\b)", name, maxsplit=1)[0]
+    name = re.sub(r"(?:\b(?:po|do|około|ok\.?)\s*)+$", "", name).strip(" ,:–—-…")
+    name = re.sub(r"\s+", " ", name)
+    variants = [{"qty": quantity, "unit": unit}]
+    for secondary in QUANTITY.finditer(normalized, end):
+        secondary_unit = UNIT.match(normalized[secondary.end() :])
+        if not secondary_unit or UNITS[secondary_unit[1]] not in ("g", "kg", "ml", "l", "szt."):
+            continue
+        try:
+            value = (
+                max(amount(secondary[1]), amount(secondary[2]))
+                if secondary[2]
+                else amount(secondary[1])
+            )
+        except (ValueError, ZeroDivisionError, OverflowError):
+            continue
+        if secondary_unit[1] in ("dag", "dkg", "dekagram", "dekagramy", "dekagramów"):
+            value *= 10
+        variant = {"qty": value, "unit": UNITS[secondary_unit[1]]}
+        if 0 < value <= 1000000 and variant not in variants:
+            variants.append(variant)
+    if len(variants) > 1:
+        result["quantity_variants"] = variants
+        description = " / ".join(
+            f"{format(item['qty'], 'g').replace('.', ',')} {item['unit']}" for item in variants
+        )
+        note = f"Sprawdź warianty ilości dla „{name or text}”: {description}."
+        result["notes"] = [note]
+        notes.append(note)
     result.update(qty=quantity, unit=unit, name=name or text)
     if not unit_match:
         notes.append(f"Brak jednostki: przyjęto sztuki dla „{text}”.")
@@ -142,6 +178,15 @@ def normalize(value):
             ),
         )
     )
+
+
+def select_quantity(ingredient, units=None):
+    variants = ingredient.get("quantity_variants", [])
+    for unit in units if units is not None else ("g", "ml", "kg", "l"):
+        for variant in variants:
+            if variant["unit"] == unit:
+                return ingredient | variant
+    return ingredient
 
 
 def match_product(ingredient, products):
@@ -171,8 +216,9 @@ def match_product(ingredient, products):
                 score = SequenceMatcher(None, name, candidate).ratio()
                 ranked.append((score, candidate, str(product["id"]), product))
         if not ranked:
-            return ingredient
+            return select_quantity(ingredient)
         product, kind = min(ranked, key=lambda item: (-item[0], item[1], item[2]))[3], "fuzzy"
+    ingredient = select_quantity(ingredient, product["units"])
     return ingredient | {
         "product_id": product["id"],
         "match": kind,
