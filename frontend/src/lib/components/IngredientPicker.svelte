@@ -118,7 +118,7 @@
   function focusPanel(node: HTMLElement) {
     const previous = document.activeElement as HTMLElement | null;
     const previousOverflow = document.body.style.overflow;
-    if (window.innerWidth < 1024) document.body.style.overflow = 'hidden';
+    document.body.style.overflow = 'hidden';
     node.querySelector<HTMLInputElement>('input')?.focus();
     const keydown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
@@ -130,12 +130,23 @@
         void saveProduct();
         return;
       }
-      if (event.key !== 'Tab' || window.innerWidth >= 1024) return;
+      if (event.key !== 'Tab') return;
       const targets = [
-        ...node.querySelectorAll<HTMLElement>('button:not(:disabled),input'),
+        ...node.querySelectorAll<HTMLElement>(
+          'button:not(:disabled),input:not(:disabled),[tabindex="0"]',
+        ),
       ];
+      if (!targets.length) {
+        event.preventDefault();
+        return;
+      }
       const first = targets[0],
         last = targets[targets.length - 1];
+      if (!targets.includes(document.activeElement as HTMLElement)) {
+        event.preventDefault();
+        (event.shiftKey ? last : first)?.focus();
+        return;
+      }
       if (event.shiftKey && document.activeElement === first) {
         event.preventDefault();
         last?.focus();
@@ -149,7 +160,11 @@
       destroy() {
         node.removeEventListener('keydown', keydown);
         document.body.style.overflow = previousOverflow;
-        previous?.focus();
+        if (previous && previous !== document.body && previous.isConnected) {
+          previous.focus();
+        } else {
+          document.getElementById(`${uid}-search`)?.focus();
+        }
       },
     };
   }
@@ -209,7 +224,8 @@
     amount = '';
     expanded = false;
   }
-  function closePanel() {
+  function closePanel(force = false) {
+    if (pending && !force) return;
     creating = false;
     editing = null;
     if (editorOnly) onclose();
@@ -282,7 +298,7 @@
         choose(product);
         showToast(`Dodano produkt do bazy: ${product.name}`);
       }
-      closePanel();
+      closePanel(true);
     } catch (e) {
       error =
         e instanceof Error && !(e instanceof TypeError)
@@ -294,7 +310,7 @@
   }
 </script>
 
-<section class="ingredients">
+<section class="ingredients" class:editor-only={editorOnly}>
   {#if !editorOnly}<h2>Składniki</h2>
     {#each ingredients as ingredient, index (index)}
       <div class="row">
@@ -364,7 +380,7 @@
     {#if selected}
       <button
         type="button"
-        class="new"
+        class="new edit-btn"
         aria-label={`Edytuj produkt: ${selected.name}`}
         onclick={() => {
           if (selected) editProduct(selected);
@@ -391,127 +407,279 @@
     {/if}
   {/if}
   {#if creating}
-    <button
-      class="backdrop"
-      type="button"
-      aria-label="Zamknij"
-      disabled={pending}
-      onclick={closePanel}
-    ></button>
-    <div
-      class="product-panel"
-      role="dialog"
-      aria-label={editing ? 'Edytuj produkt' : 'Nowy produkt'}
-      tabindex="-1"
-      use:focusPanel
-    >
-      <h2>{editing ? 'Edytuj produkt' : 'Nowy produkt'}</h2>
-      {#if editing}<p>
-          Zmiana dotyczy wszystkich przepisów z tym produktem.
-        </p>{/if}
-      <button type="button" disabled={pending} onclick={closePanel}
-        >Anuluj</button
-      >
-      <label
-        >Nazwa produktu<input
-          placeholder="np. Sumak mielony"
-          bind:value={name}
-        /></label
-      >
-      {#if duplicate}<p role="alert">Produkt o tej nazwie już istnieje.</p>{/if}
-      {#if !editing}<p>
-          W jakich jednostkach go dodajesz? (pierwsza wybrana jest domyślna)
-        </p>
-        <div class="chips">
-          {#each options as option (option)}<button
-              type="button"
-              aria-pressed={units.includes(option)}
-              class:active={units.includes(option)}
-              onclick={() =>
-                (units = units.includes(option)
-                  ? units.filter((u) => u !== option)
-                  : [...units, option])}>{option}</button
-            >{/each}
-        </div>
-      {/if}
-      <h3>Wartości odżywcze (opcjonalnie)</h3>
-      <div class="chips">
-        {#each editing ? ['', 'g', 'ml', 'szt.'] : ['g', 'ml', 'szt.'] as option (option)}<button
-            type="button"
-            class:active={basis === option}
-            onclick={() => {
-              basis = option;
-              if (!option) values = ['', '', '', ''];
-            }}
-            >{option
-              ? `na ${option === 'szt.' ? '1' : '100'} ${option}`
-              : 'brak'}</button
-          >{/each}
-      </div>
-      <div class="values">
-        {#each labels as label, i (label)}<label
-            >{label}<input inputmode="decimal" bind:value={values[i]} /></label
-          >{/each}
-      </div>
-      <p>
-        Bez wartości odżywczych produkt zapisze się w przepisie, ale nie wliczy
-        się do kalorii i makro.
-      </p>
-      {#if error}<p role="alert">{error}</p>{/if}
+    <div class="modal-overlay">
       <button
+        class="backdrop"
         type="button"
-        class="primary"
-        disabled={pending ||
-          !name.trim() ||
-          duplicate ||
-          !units.length ||
-          (!basis && values.some((value) => number(value) !== null))}
-        onclick={saveProduct}
-        >{editing ? 'Zapisz zmiany' : 'Zapisz produkt'}</button
+        tabindex="-1"
+        aria-hidden="true"
+        disabled={pending}
+        onclick={() => closePanel()}
+      ></button>
+      <div
+        class="product-panel"
+        role="dialog"
+        aria-modal="true"
+        aria-label={editing ? 'Edytuj produkt' : 'Nowy produkt'}
+        tabindex="-1"
+        use:focusPanel
       >
+        <header class="panel-header">
+          <div>
+            <h2>{editing ? 'Edytuj produkt' : 'Nowy produkt'}</h2>
+            {#if editing}<p class="header-note">
+                Zmiana dotyczy wszystkich przepisów z tym produktem.
+              </p>{/if}
+          </div>
+          <button
+            type="button"
+            class="close-button"
+            aria-label="Zamknij"
+            disabled={pending}
+            onclick={() => closePanel()}>✕</button
+          >
+        </header>
+
+        <div class="panel-body">
+          <label
+            >Nazwa produktu<input
+              placeholder="np. Sumak mielony"
+              bind:value={name}
+            /></label
+          >
+          {#if duplicate}<p role="alert">
+              Produkt o tej nazwie już istnieje.
+            </p>{/if}
+          {#if !editing}<p class="units-label">
+              W jakich jednostkach go dodajesz? (pierwsza wybrana jest domyślna)
+            </p>
+            <div class="chips">
+              {#each options as option (option)}<button
+                  type="button"
+                  aria-pressed={units.includes(option)}
+                  class:active={units.includes(option)}
+                  onclick={() =>
+                    (units = units.includes(option)
+                      ? units.filter((u) => u !== option)
+                      : [...units, option])}>{option}</button
+                >{/each}
+            </div>
+          {/if}
+          <h3>Wartości odżywcze (opcjonalnie)</h3>
+          <div class="chips">
+            {#each editing ? ['', 'g', 'ml', 'szt.'] : ['g', 'ml', 'szt.'] as option (option)}<button
+                type="button"
+                class:active={basis === option}
+                onclick={() => {
+                  basis = option;
+                  if (!option) values = ['', '', '', ''];
+                }}
+                >{option
+                  ? `na ${option === 'szt.' ? '1' : '100'} ${option}`
+                  : 'brak'}</button
+              >{/each}
+          </div>
+          <div class="values">
+            {#each labels as label, i (label)}<label
+                >{label}<input
+                  inputmode="decimal"
+                  bind:value={values[i]}
+                /></label
+              >{/each}
+          </div>
+          <p class="macro-note">
+            Bez wartości odżywczych produkt zapisze się w przepisie, ale nie
+            wliczy się do kalorii i makro.
+          </p>
+          {#if error}<p role="alert">{error}</p>{/if}
+        </div>
+
+        <div class="panel-actions">
+          <button
+            type="button"
+            class="cancel"
+            disabled={pending}
+            onclick={() => closePanel()}>Anuluj</button
+          >
+          <button
+            type="button"
+            class="primary"
+            disabled={pending ||
+              !name.trim() ||
+              duplicate ||
+              !units.length ||
+              (!basis && values.some((value) => number(value) !== null))}
+            onclick={saveProduct}
+            >{editing ? 'Zapisz zmiany' : 'Zapisz produkt'}</button
+          >
+        </div>
+      </div>
     </div>
   {/if}
 </section>
 
 <style>
-  .backdrop {
-    display: none;
-  }
-  @media (max-width: 1023px) {
-    .backdrop {
-      display: block;
-      position: fixed;
-      inset: 0;
-      background: #0008;
-      z-index: 4;
-    }
-    .product-panel {
-      position: fixed;
-      bottom: 0;
-      left: 0;
-      right: 0;
-      max-height: 90dvh;
-      overflow: auto;
-      background: var(--white);
-      padding: 24px 16px !important;
-      border-radius: 24px 24px 0 0;
-      z-index: 5;
-    }
-  }
   .ingredients {
     background: var(--white);
     border-radius: 24px;
     padding: 20px;
     align-self: start;
   }
+  .ingredients.editor-only {
+    padding: 0;
+    background: none;
+    border-radius: 0;
+  }
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+  .backdrop {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(20, 32, 26, 0.5);
+    border: none;
+    cursor: default;
+    padding: 0;
+    margin: 0;
+  }
+  .product-panel {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 520px;
+    max-height: 90dvh;
+    display: flex;
+    flex-direction: column;
+    background: var(--white);
+    border-radius: 24px;
+    padding: 20px;
+    box-shadow: 0 16px 48px rgba(20, 32, 26, 0.25);
+    box-sizing: border-box;
+  }
+  @media (min-width: 1024px) {
+    .modal-overlay {
+      padding: 24px;
+    }
+    .product-panel {
+      padding: 24px 28px;
+    }
+  }
+  .panel-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 8px;
+    flex-shrink: 0;
+  }
+  .panel-header h2 {
+    margin: 0;
+    font-family: var(--font-heading);
+    font-size: 22px;
+  }
+  .header-note {
+    margin: 4px 0 0;
+    color: var(--muted);
+    font-size: 13px;
+  }
+  .close-button {
+    flex: none;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    line-height: 1;
+    border-radius: 12px;
+    color: var(--muted);
+    cursor: pointer;
+  }
+  .close-button:hover:not(:disabled) {
+    background: var(--gray);
+    color: var(--text);
+  }
+  .close-button:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+  .panel-body {
+    overflow-y: auto;
+    padding: 4px 2px;
+    margin: 0 -2px;
+  }
+  .units-label {
+    margin: 12px 0 0;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .macro-note {
+    margin: 8px 0 0;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .panel-actions {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 12px;
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .cancel {
+    min-height: 44px;
+    padding: 12px 20px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--gray);
+    color: var(--text);
+    font-weight: 600;
+    font-size: 15px;
+    text-align: center;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+  .cancel:hover:not(:disabled) {
+    filter: brightness(0.95);
+  }
+  .cancel:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+  @media (max-width: 480px) {
+    .panel-actions {
+      display: flex;
+      flex-direction: row;
+      gap: 10px;
+    }
+    .panel-actions button {
+      flex: 1;
+      justify-content: center;
+    }
+  }
   h2 {
     font-family: var(--font-heading);
     margin: 0 0 16px;
   }
+  h3 {
+    margin: 14px 0 0;
+    font-size: 15px;
+  }
   label {
     display: block;
     font-weight: 600;
-    margin: 12px 0 8px;
   }
   input {
     display: block;
@@ -557,12 +725,18 @@
     background: var(--accent);
     color: white;
     padding: 14px 20px;
+    min-height: 44px;
     border-radius: 12px;
-    margin-top: 12px;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
   }
   .primary:disabled {
     background: var(--disabled);
     color: var(--muted);
+    cursor: default;
   }
   [role='listbox'] button {
     display: block;
@@ -576,19 +750,34 @@
     color: var(--muted);
   }
   .new {
-    padding: 14px 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 44px;
+    padding: 10px 16px;
+    border: 1.5px solid var(--accent);
+    border-radius: 12px;
+    background: var(--white);
     color: var(--accent);
-    text-align: left;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    text-align: center;
+    line-height: 1.3;
+    margin: 8px 0;
+    box-sizing: border-box;
+  }
+  .new:hover:not(:disabled) {
+    background: var(--accent-light);
+  }
+  .edit-btn {
+    align-self: flex-start;
   }
   .values {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     gap: 8px;
-  }
-  .product-panel {
-    border-top: 1px solid var(--border);
-    margin-top: 20px;
-    padding-top: 20px;
   }
   [role='alert'] {
     color: var(--warning);

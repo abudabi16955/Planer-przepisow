@@ -6,7 +6,7 @@ Wersja: 0.1 (Etap 0, do akceptacji) · Data: 2026-10-21 · Autor: Szef (Chief of
 Teksty interfejsu, układ i kolory bierzemy z prototypu. Robocza nazwa „Kuchnia domowa” → **„Planer przepisów”**.
 Dane przykładowe z prototypu (7 przepisów, plan tygodnia) są fikcyjne — w aplikacji nie występują, poza bazą produktów (p. 5.1).
 
-Odniesienia do prototypu w formacie `T:<linia>` (telefon) i `L:<linia>` (laptop).
+Odniesienia do prototypu w formacie `T:<linia>` (telefon) i `L:<linia>`.
 
 ---
 
@@ -31,7 +31,7 @@ nawigacja między tygodniami w planerze, zapis opisu posta — szczegóły w p. 
 |---|---|---|
 | Nawigacja | dolny pasek: **Przepisy · Dodaj · Planer** (T:647). „Dodaj” jako zielone kółko z „+”. Pasek ukryty w szczegółach przepisu. Lista zakupów otwierana z Planera; w pasku podświetla się wtedy „Planer”. | pasek boczny 248 px (L:34): nazwa aplikacji, **Przepisy · Planer · Lista zakupów**, na dole przycisk **„Dodaj przepis”**. |
 | Szczegóły przepisu | osobny ekran pełnoekranowy, przycisk „Wróć”, dolny pasek „Dodaj do planera” | prawy panel 480 px obok siatki przepisów (L:106) |
-| Arkusze / okna | dolne arkusze (bottom sheet) z przyciemnionym tłem | okno modalne (wybór przepisu) lub panel rozwijany w miejscu (dodaj do planera, nowy produkt, cel dzienny) |
+| Arkusze / okna | dolne arkusze (bottom sheet) z przyciemnionym tłem; modal pop-up dla produktów | okno modalne (wybór przepisu, produkt) lub panel rozwijany w miejscu (dodaj do planera, cel dzienny) |
 | Toast | nad paskiem nawigacji, 2,4 s | na dole, wyśrodkowany, 400 px, 2,4 s |
 
 Adresy (URL) ekranów: `/` (przepisy), `/przepis/:id`, `/dodaj`, `/planer`, `/zakupy`. Na laptopie `/przepis/:id` otwiera listę z zaznaczonym przepisem w panelu.
@@ -102,25 +102,25 @@ Adresy (URL) ekranów: `/` (przepisy), `/przepis/:id`, `/dodaj`, `/planer`, `/za
 #### 3.4.1 Podsumowanie dnia i cel dzienny
 - 4 wiersze: **Kalorie, Białko, Węglowodany, Tłuszcze**: „zjedzone / cel”, pasek (max 100%), komunikat: „Brakuje 420 kcal” · „Cel osiągnięty” · „Przekroczono o 35 g” (kolor #A3412A) · gdy cel = 0: „brak celu” i „Ustaw cel w „Zmień cel””.
 - Suma = suma wartości **1 porcji** każdego zaplanowanego posiłku dnia. Przepis bez wartości odżywczych liczy się jako 0.
-- „Proporcje z kalorii” (gdy dzień ma energię > 0): pasek i tekst „Białko 23% · węgle 52% · tłuszcze 25%”, pod spodem „W celu: 20% · 50% · 29%” albo „Uzupełnij cele makro, żeby zobaczyć docelowe proporcje.”
-- Podpis „Suma z zaplanowanych posiłków, po 1 porcji każdy.”
+- „Proporcje z kalorii” (gdy dzień ma energię > 0): pasek i tekst „Białko 23% · węgle 52% · tłuszcze 25%”, pod spodem „W celu: 20% · 50% · 29%” albo „Uzupełnij cele makro, żeby zobaczyć docelowe proporcje.”.
+- Podpis „Suma z zaplanowanych posiłków, po 1 porcji każdy.”.
 - **Zmień cel**: telefon — arkusz „Dzienne zapotrzebowanie” (4 pola, zmiany działają od razu, przycisk „Gotowe”); laptop — panel rozwijany „Zmień cel dzienny” / „Ukryj edycję celu”.
 - Domyślny cel: 2000 kcal, 100 g białka, 250 g węglowodanów, 65 g tłuszczu. Cel jest jeden (globalny), zapisywany trwale.
 
 ### 3.5 Lista zakupów (T:577, L:362)
 - Nagłówek „Lista zakupów”, podtytuł „19–25 października · Pozycje: 24 · Posiłki: 11”. Telefon: przycisk „Wróć do planera”.
-- Karta „Na które dni kupujesz?”: presety **Cały tydzień · Od dziś · Weekend** (aktywny, gdy wybór dokładnie mu odpowiada; „Od dziś” = dziś…niedziela) + 7 przełączników dni z liczbą zaplanowanych posiłków pod datą; podpis „Cyfra pod datą to liczba zaplanowanych posiłków tego dnia.” Domyślnie: cały tydzień.
+- Karta „Na które dni kupujesz?”: presety **Cały tydzień · Od dziś · Weekend** (aktywny, gdy wybór dokładnie mu odpowiada; „Od dziś” = dziś…niedziela) + 7 przełączników dni z liczbą zaplanowanych posiłków pod datą; podpis „Cyfra pod datą to liczba zaplanowanych posiłków tego dnia.”. Domyślnie: cały tydzień.
 - Postęp: „Kupione: 3 z 24” + pasek.
 - Lista pozycji (telefon 1 kolumna, laptop 2 kolumny): okrąg/✓, nazwa, ilość; klik odhacza (przekreślenie). Stan odhaczenia zapisywany trwale per tydzień.
 - Puste stany: „Wybierz co najmniej jeden dzień.” / „W wybranych dniach nie ma zaplanowanych posiłków.”
-- Podpis z zasadami: „Ilości są zsumowane ze wszystkich zaplanowanych posiłków, po 1 porcji każdy. Sztuki zaokrąglone w górę. Ten sam produkt w różnych jednostkach jest w osobnych wierszach.”
+- Podpis z zasadami: „Ilości są zsumowane ze wszystkich zaplanowanych posiłków, po 1 porcji każdy. Sztuki zaokrąglone w górę. Ten sam produkt w różnych jednostkach jest w osobnych wierszach.”.
 - Laptop: dostęp też z paska bocznego; przycisk w planerze nieaktywny przy pustym planie.
 
 ### 3.6 Wybór składnika i nowy produkt (T:389, T:746, L:555)
 - Pole „Szukaj produktu, np. mleko” (combobox). Po wpisaniu ≥ 1 znaku lista do 6 dopasowań (fragment nazwy, bez wielkości liter) z podpowiedzią „jedn.: g”.
 - Brak dopasowań: „Nie ma takiego produktu w bazie.” Zawsze na dole: „+ Nie ma na liście? Dodaj „sumak” jako nowy produkt” (lub „Dodaj nowy produkt” przy pustym polu).
 - Po wyborze produktu: chipy **Jednostka** (jednostki produktu + „do smaku”), pole **Ilość** (ukryte dla „do smaku”), przycisk „Dodaj składnik” aktywny, gdy ilość > 0 albo „do smaku”. Akceptujemy przecinek i kropkę.
-- **Nowy produkt** (arkusz na telefonie, panel w miejscu na laptopie z „Anuluj”):
+- **Nowy produkt** (modal pop-up wyśrodkowany na ekranie z przyciemnionym tłem, na telefonie i na laptopie):
   - „Nazwa produktu” (wymagana, unikalna bez względu na wielkość liter — przy duplikacie przycisk nieaktywny);
   - „W jakich jednostkach go dodajesz? (pierwsza wybrana jest domyślna)” — chipy: g, kg, ml, l, szt., łyżeczka, łyżka, szklanka, szczypta; min. 1; kolejność wyboru = kolejność jednostek;
   - „Wartości odżywcze (opcjonalnie)” — podstawa: **na 100 g · na 100 ml · na 1 szt.** + kcal, Białko g, Węgle g, Tłuszcz g;
@@ -351,9 +351,15 @@ pozostaje osobnym zadaniem #62.
 Po wybraniu produktu w wyszukiwarce składników i przy dopasowanym wierszu
 przeglądu importu dostępny jest przycisk „Edytuj produkt”. Ten sam formularz co
 „Nowy produkt” otwiera się z wypełnioną nazwą, podstawą i wartościami odżywczymi.
-Na telefonie jest dolnym arkuszem, na laptopie panelem w miejscu. Przyciski:
-„Zapisz zmiany” i „Anuluj”. Notka: „Zmiana dotyczy wszystkich przepisów z tym
-produktem.”. Jednostki i przeliczniki nie są edytowalne; nie usuwamy produktów.
+Formularz „Nowy produkt” i „Edytuj produkt” to modal pop-up wyśrodkowany na ekranie
+z przyciemnionym tłem, na telefonie i na laptopie (`role="dialog"`, `aria-modal="true"`,
+pułapka fokusu na obu szerokościach, blokada przewijania tła). Przyciski:
+„Zapisz zmiany” / „Zapisz produkt” oraz „Anuluj” (wyraźny przycisk drugorzędny
+na dole obok przycisku zapisu, min. 44 px wysokości) oraz ikona ✕ w nagłówku
+(`aria-label="Zamknij"`). Przyciski „Nie ma na liście? Dodaj „…” jako nowy produkt”
+i „Edytuj produkt” mają styl przycisku drugorzędnego z obramowaniem w kolorze
+akcentu. Notka: „Zmiana dotyczy wszystkich przepisów z tym produktem.”.
+Jednostki i przeliczniki nie są edytowalne; nie usuwamy produktów.
 
 Zmieniać można nazwę, podstawę (100 g, 100 ml, 1 szt. lub brak) i kcal/białko/
 węgle/tłuszcz. Wybranie „brak” czyści wartości odżywcze. Duplikat nazwy blokuje
