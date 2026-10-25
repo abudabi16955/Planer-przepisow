@@ -291,3 +291,25 @@ Błędy: `no_recipe` — „Na tej stronie nie znalazłem przepisu. Dodaj go rę
 `fetch_failed`/`timeout` — „Nie udało się pobrać strony.”; `too_large` — „Strona
 jest za duża.”. Dostępny jest przycisk „Spróbuj ponownie”, a formularz ręczny
 pozostaje dostępny. Brak sieci: „Brak połączenia z serwerem.”.
+
+### 10.2. Nazwy składników i alternatywne ilości WWW
+
+Określenia rozmiaru/opisu bezpośrednio przy ilości (np. mały/mała/małe,
+średni/średnia/średnie, duży/duża/duże, spory, płaska/czubata, garść i odmiany)
+nie wchodzą do nazwy produktu. Dopisek osobisty po „- u mnie …” także nie służy
+do dopasowania produktu. Oryginalna linia pozostaje w `raw`, a spacje w nazwie
+są normalizowane. Nie usuwamy dowolnych przymiotników z nazw: np. „fasola biała”
+i „papryka słodka” zachowują znaczenie.
+
+Gdy linia zawiera dwie ilości, np. „cebula 2 średnie - 340 g” albo „plastry schabu
+- u mnie od karczku 7 sztuk - 700 g”, szkic zachowuje warianty w opcjonalnym
+`quantity_variants: [{qty, unit}, …]`. Główny `qty`/`unit` jest wybierany po
+dopasowaniu produktu: według kolejności jego jednostek, wyłącznie spośród
+wariantów podanych na stronie. Gdy produkt jest nieznany, preferujemy g lub ml,
+następnie kg lub l. Jeśli żaden wariant nie pasuje do jednostek znanego produktu,
+pozostaje `unit_ok: false`; nie zgadujemy przeliczników.
+
+Obie ilości pozostają w `raw`, w `notes` składnika i w uwagach szkicu, widocznych
+przy przeglądzie. Np. produkt dopuszczający tylko g dostaje 340 g, a produkt
+dopuszczający tylko szt. — 2 szt. Syntetyczny test microdata obejmuje także
+strukturę z nazwą i ilością w oddzielnych elementach HTML.
