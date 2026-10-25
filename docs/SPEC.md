@@ -313,3 +313,14 @@ Obie ilości pozostają w `raw`, w `notes` składnika i w uwagach szkicu, widocz
 przy przeglądzie. Np. produkt dopuszczający tylko g dostaje 340 g, a produkt
 dopuszczający tylko szt. — 2 szt. Syntetyczny test microdata obejmuje także
 strukturę z nazwą i ilością w oddzielnych elementach HTML.
+
+Przy odczycie jednostki „pełna/pełne/pełnej” działa tak jak „płaska/czubata”:
+„1 pełna łyżka - 20 g” zachowuje warianty 1 łyżka i 20 g. Końcowe łączniki
+przed ilością („po”, „do”, „około”, „ok.”), dopiski po rozdzielającym „ - ”
+i uwagi w nawiasach nie są częścią nazwy produktu; nadal pozostają w `raw`.
+Np. „mąka pszenna - do zagęszczenia sosu do 2 płaskich łyżek” daje nazwę
+„mąka pszenna” i 2 łyżki. Liczby w nawiasowym opisie (np. typ mąki) nie zastępują
+ilości składnika. Ułamki pozostają dokładne do obliczeń, a pole przeglądu pokazuje
+je z polskim przecinkiem i do dwóch miejsc, np. 1/3 → „0,33” (dla bardzo małych
+ilości zachowuje więcej miejsc). Zaokrąglenie prezentacji nie zmienia ilości
+zapisywanej bez edycji.

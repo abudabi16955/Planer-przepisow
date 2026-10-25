@@ -109,3 +109,13 @@ export async function requestWebImport(
   }
   return response.json();
 }
+
+/** Round the editable presentation, retaining the original quantity until the user edits it. */
+export function formatImportAmount(value: number | null): string {
+  if (value === null) return '';
+  return new Intl.NumberFormat('pl-PL', {
+    useGrouping: false,
+    maximumFractionDigits:
+      Math.abs(value) > 0 && Math.abs(value) < 0.01 ? 8 : 2,
+  }).format(value);
+}

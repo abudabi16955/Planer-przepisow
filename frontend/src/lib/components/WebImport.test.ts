@@ -263,3 +263,57 @@ test('edycja WWW zachowuje źródło bez ponownego importu', async () => {
     ),
   );
 });
+
+test('ułamek pokazuje 0,33 bez utraty dokładnej ilości w zapisie', async () => {
+  draft.ingredients = [{ ...draft.ingredients[0], qty: 1 / 3 }];
+  const onSave = vi.fn(async () => recipes[0]);
+  render(RecipeForm, { onSave });
+  await load();
+  expect(
+    (screen.getByLabelText('Ilość: Produkt') as HTMLInputElement).value,
+  ).toBe('0,33');
+  await fireEvent.click(saveButton());
+  await waitFor(() =>
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        ingredients: [{ product_id: 'product', quantity: 1 / 3, unit: 'g' }],
+      }),
+    ),
+  );
+});
+
+test('edycja liczby dziesiętnej zachowuje wpisywany przecinek', async () => {
+  draft.ingredients = [{ ...draft.ingredients[0], qty: 1 / 3 }];
+  render(RecipeForm, { onSave: vi.fn() });
+  await load();
+  const input = screen.getByLabelText('Ilość: Produkt') as HTMLInputElement;
+  await fireEvent.input(input, { target: { value: '0,' } });
+  expect(input.value).toBe('0,');
+  expect(saveButton().disabled).toBe(true);
+  await fireEvent.input(input, { target: { value: '0,25' } });
+  expect(input.value).toBe('0,25');
+  expect(saveButton().disabled).toBe(false);
+});
+
+test('wybór produktu pokazuje krótki ułamek i zachowuje dokładną ilość bez edycji', async () => {
+  draft.ingredients = [{ ...draft.ingredients[1], qty: 1 / 3, unit: 'g' }];
+  const onSave = vi.fn(async () => recipes[0]);
+  render(RecipeForm, { onSave });
+  await load();
+  const row = within(screen.getByRole('group', { name: 'Składnik 1' }));
+  await fireEvent.click(row.getByRole('button', { name: 'Wybierz produkt' }));
+  await fireEvent.input(row.getByRole('combobox'), {
+    target: { value: 'Produkt' },
+  });
+  await fireEvent.click(row.getByRole('option', { name: /Produkt/ }));
+  expect((row.getByLabelText('Ilość') as HTMLInputElement).value).toBe('0,33');
+  await fireEvent.click(row.getByRole('button', { name: 'Dodaj składnik' }));
+  await fireEvent.click(saveButton());
+  await waitFor(() =>
+    expect(onSave).toHaveBeenCalledWith(
+      expect.objectContaining({
+        ingredients: [{ product_id: 'product', quantity: 1 / 3, unit: 'g' }],
+      }),
+    ),
+  );
+});

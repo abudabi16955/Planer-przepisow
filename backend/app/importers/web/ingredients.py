@@ -61,7 +61,7 @@ DESCRIPTOR = (
     r"(?:mał(?:y|a|e|ego|ej|ych|ą|ym|ymi)|średn(?:i|ia|ie|iego|iej|ich|ią|im|imi)"
     r"|duż(?:y|a|e|ego|ej|ych|ą|ym|ymi)|spor(?:y|a|e|ego|ej|ych|ą|ym|ymi)"
     r"|płask(?:i|a|ie|iego|iej|ich|ą|im|imi)|czubat(?:y|a|e|ego|ej|ych|ą|ym|ymi)"
-    r"|kopiast(?:y|a|e|ego|ej|ych|ą|ym|ymi)|garść|garści|garście|garściami)"
+    r"|pełn(?:y|a|e|ego|ej|ych|ą|ym|ymi)|kopiast(?:y|a|e|ego|ej|ych|ą|ym|ymi)|garść|garści|garście|garściami)"
 )
 UNIT = re.compile(rf"^\s*(?:{DESCRIPTOR}\s+)*({UNIT_PATTERN})\.?(?=\W|$)", re.IGNORECASE)
 
@@ -101,7 +101,9 @@ def parse_ingredient(raw):
     if re.search(r"\bdo smaku\b", normalized):
         result["name"] = re.sub(r"\bdo smaku\b", "", text, flags=re.IGNORECASE).strip(" ,-")
         return result, notes
-    match = QUANTITY.search(normalized)
+    # Ignore parenthetical comments for the primary amount, retaining string offsets.
+    quantity_text = re.sub(r"\([^)]*\)", lambda item: " " * len(item[0]), normalized)
+    match = QUANTITY.search(quantity_text)
     if not match:
         notes.append(f"Sprawdź ilość składnika: {text}.")
         return result, notes
@@ -114,7 +116,7 @@ def parse_ingredient(raw):
         return result, notes
     if match[2]:
         notes.append(f"Zakres ilości: przyjęto górną wartość dla „{text}”.")
-    suffix = normalized[match.end() :]
+    suffix = quantity_text[match.end() :]
     unit_match = UNIT.match(suffix)
     unit = UNITS[unit_match[1]] if unit_match else "szt."
     start, end = match.span()
@@ -125,11 +127,12 @@ def parse_ingredient(raw):
             notes.append(f"Przeliczono dekagramy na gramy: {text}.")
         if unit_match[1].startswith("ząb"):
             notes.append(f"Ząbki zapisano jako sztuki; sprawdź jednostkę: {text}.")
-    prefix = re.sub(rf"(?:\b{DESCRIPTOR}\s*)+$", "", normalized[:start])
-    suffix = re.sub(rf"^(?:\s*{DESCRIPTOR}\b)+", "", normalized[end:])
+    prefix = re.sub(rf"(?:\b{DESCRIPTOR}\s*)+$", "", quantity_text[:start])
+    suffix = re.sub(rf"^(?:\s*{DESCRIPTOR}\b)+", "", quantity_text[end:])
     name = (prefix + " " + suffix).strip(" ,:–—-")
-    name = re.sub(r"^po\s+", "", name)
-    name = re.sub(r"\s*[-–—]\s*(?:\d|u mnie\b).*$", "", name).strip()
+    name = re.sub(r"^(?:(?:po|do|około|ok\.)\s+)+", "", name)
+    name = re.split(r"\s+[-–—]\s+|\s*[-–—]\s*(?=\d|u mnie\b)", name, maxsplit=1)[0]
+    name = re.sub(r"(?:\b(?:po|do|około|ok\.?)\s*)+$", "", name).strip(" ,:–—-…")
     name = re.sub(r"\s+", " ", name)
     variants = [{"qty": quantity, "unit": unit}]
     for secondary in QUANTITY.finditer(normalized, end):
