@@ -34,7 +34,7 @@ test('WWW → przegląd składników → zapis → Oryginalna strona', async ({ 
     const save = page.getByRole('button', { name: 'Zapisz przepis', exact: true });
     await expect(save).toBeDisabled();
     const fuzzy = page.getByRole('group', { name: 'Składnik 2', exact: true });
-    await fuzzy.getByRole('button', { name: 'ml', exact: true }).click();
+    await fuzzy.getByRole('button', { name: 'ml: Mleko 2%', exact: true }).click();
     await fuzzy.getByRole('button', { name: 'Zatwierdź składnik' }).click();
     const newRow = page.getByRole('group', { name: 'Składnik 3', exact: true });
     await newRow.getByRole('button', { name: `Dodaj „${productName}” jako nowy produkt`, exact: true }).click();
@@ -42,7 +42,7 @@ test('WWW → przegląd składników → zapis → Oryginalna strona', async ({ 
     await expect(dialog.getByLabel('Nazwa produktu')).toHaveValue(productName);
     await dialog.getByRole('button', { name: 'Zapisz produkt', exact: true }).click();
     await newRow.getByRole('button', { name: 'Dodaj składnik', exact: true }).click();
-    await page.getByRole('group', { name: 'Składnik 4', exact: true }).getByRole('button', { name: 'Pomiń', exact: true }).click();
+    await page.getByRole('group', { name: 'Składnik 4', exact: true }).getByRole('button', { name: 'Pomiń składnik: Nieznany dodatek', exact: true }).click();
     await expect(save).toBeEnabled();
     const created = page.waitForResponse(response => response.url().endsWith('/api/recipes') && response.request().method() === 'POST');
     await save.click();

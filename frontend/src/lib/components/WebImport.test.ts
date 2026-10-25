@@ -83,7 +83,9 @@ test('wypełnia formularz, pokazuje surowe uwagi i blokuje nieznane; pominięcie
   await fireEvent.input(screen.getByLabelText('Ilość: Produkt'), {
     target: { value: '250' },
   });
-  await fireEvent.click(screen.getByRole('button', { name: 'Pomiń' }));
+  await fireEvent.click(
+    screen.getByRole('button', { name: 'Pomiń składnik: Nieznany' }),
+  );
   await fireEvent.click(saveButton());
   await waitFor(() =>
     expect(onSave).toHaveBeenCalledWith(
@@ -106,7 +108,7 @@ test('zachowuje wpisaną nazwę i pozwala dopasować nieznany produkt istniejąc
     'Moja nazwa',
   );
   const row = within(screen.getByRole('group', { name: 'Składnik 2' }));
-  await fireEvent.click(row.getByRole('button', { name: 'Wybierz produkt' }));
+  await fireEvent.click(row.getByRole('button', { name: /Wybierz produkt:/ }));
   await fireEvent.input(row.getByRole('combobox'), {
     target: { value: 'Produkt' },
   });
@@ -143,10 +145,10 @@ test('fuzzy i niezgodna jednostka wymagają poprawienia i zatwierdzenia', async 
   expect(screen.getByText('sprawdź')).toBeTruthy();
   expect(saveButton().disabled).toBe(true);
   const row = within(screen.getByRole('group', { name: 'Składnik 1' }));
-  await fireEvent.click(row.getByRole('button', { name: 'g' }));
+  await fireEvent.click(row.getByRole('button', { name: 'g: Produkt' }));
   expect(saveButton().disabled).toBe(true);
   await fireEvent.click(
-    row.getByRole('button', { name: 'Zatwierdź składnik' }),
+    row.getByRole('button', { name: 'Zatwierdź składnik: Produkt' }),
   );
   expect(saveButton().disabled).toBe(false);
   await fireEvent.click(
@@ -301,7 +303,7 @@ test('wybór produktu pokazuje krótki ułamek i zachowuje dokładną ilość be
   render(RecipeForm, { onSave });
   await load();
   const row = within(screen.getByRole('group', { name: 'Składnik 1' }));
-  await fireEvent.click(row.getByRole('button', { name: 'Wybierz produkt' }));
+  await fireEvent.click(row.getByRole('button', { name: /Wybierz produkt:/ }));
   await fireEvent.input(row.getByRole('combobox'), {
     target: { value: 'Produkt' },
   });

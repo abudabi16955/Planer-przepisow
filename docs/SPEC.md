@@ -324,3 +324,20 @@ ilości składnika. Ułamki pozostają dokładne do obliczeń, a pole przeglądu
 je z polskim przecinkiem i do dwóch miejsc, np. 1/3 → „0,33” (dla bardzo małych
 ilości zachowuje więcej miejsc). Zaokrąglenie prezentacji nie zmienia ilości
 zapisywanej bez edycji.
+
+### 10.3. Widoczny stan zatwierdzenia składników WWW
+
+Przegląd pokazuje licznik „Zatwierdzone: X z Y”, pomijając usunięte/pominięte
+wiersze w obu liczbach. Składnik gotowy do zapisu ma plakietkę „✓ zatwierdzony”
+w kolorze `--accent` i spokojny wygląd. Składnik wymagający sprawdzenia (także
+przy niezgodnej jednostce) ma plakietkę „sprawdź”, lewy pasek i delikatne tło
+w kolorze `--warning`. Stan jest podany tekstem i opisem ARIA, nie tylko kolorem.
+
+„Zatwierdź składnik” jest przyciskiem głównym (tło `--accent`, biały tekst);
+wybór produktu, usunięcie i pominięcie pozostają drugorzędne. „Sprawdź” znika
+po zatwierdzeniu albo po wyborze produktu, również dla pierwotnego fuzzy.
+„Cofnij zatwierdzenie” ustawia `confirmed=false` i ponownie blokuje zapis do
+kolejnego zatwierdzenia; działa także dla dopasowań exact. Edycja ilości lub
+jednostki nie cofa flagi zatwierdzenia; niepoprawna wartość nadal blokuje zapis.
+Przyciski mają etykiety ARIA z nazwą produktu. Edycja danych katalogu produktów
+pozostaje osobnym zadaniem #62.
