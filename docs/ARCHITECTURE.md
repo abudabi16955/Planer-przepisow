@@ -89,6 +89,7 @@ Odrzucone: Next.js/React (cięższe, SSR niepotrzebny), Celery/Redis (kolejka w 
 | `GET /api/plan?week=YYYY-MM-DD` · `PUT /api/plan/{date}/{slot}` · `DELETE /api/plan/{date}/{slot}` | planer |
 | `GET /api/goal` · `PUT /api/goal` | cel dzienny |
 | `GET /api/shopping-checks?week=` · `PUT /api/shopping-checks` | odhaczenia listy zakupów |
+| `PUT /api/products/{id}` | edycja nazwy i odżywienia; jednostki/przeliczniki bez zmian, 404/409/422 |
 | `GET /api/config` | flagi dla UI, np. `import_enabled` |
 | `GET /files/{path}` | pliki użytkownika z obsługą HTTP Range (przewijanie wideo) |
 
@@ -216,3 +217,13 @@ status HTTP, Content-Encoding lub Content-Type. Nie logujemy treści strony,
 ścieżki URL, query stringu, surowych komunikatów wyjątków ani stderr podprocesu.
 Wartości nagłówków są ograniczone do krótkich tokenów; techniczne powody pozostają
 w logach, a kontrakt błędów API nie zmienia się. Dotyczy to także pobierania zdjęć.
+
+Edycja produktu używa wspólnego modelu walidacji pól odżywienia (`ProductEdit`);
+`ProductCreate` dodaje wymagane jednostki. PUT blokuje rekord w transakcji,
+zachowuje pola pominięte i korzysta z istniejącego indeksu unikalności lower(name).
+Frontend współdzieli formularz tworzenia/edycji w IngredientPicker (tryb samego
+edytora osadzany również w przeglądzie WWW). Odpowiedź PUT aktualizuje `products`
+przez wspólne bindingi, co odświeża nazwy i obliczenia w formularzu. Dane produktów
+są ponownie pobierane przy otwarciu szczegółów. Obliczone makro nie jest zapisywane
+w recipe; pola recipe.kcal/protein/carbs/fat to jawne wartości użytkownika/importu,
+które zachowują pierwszeństwo nad obliczeniami ze składników.

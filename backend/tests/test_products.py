@@ -1,6 +1,7 @@
 import json
 import re
 from pathlib import Path
+from uuid import uuid4
 
 import psycopg
 import pytest
@@ -188,3 +189,84 @@ def test_schema_defaults_keys_and_recipe_cascade(client):
         connection.execute("DELETE FROM recipe WHERE id = %s", (recipe_id,))
         assert connection.execute("SELECT count(*) FROM recipe_ingredient").fetchone() == (0,)
         assert connection.execute("SELECT count(*) FROM plan_entry").fetchone() == (0,)
+
+
+def test_edit_seed_product_preserves_units_conversions_and_metadata(client):
+    product = next(row for row in client.get("/api/products").json() if row["name"] == "Czosnek")
+    values = {
+        "name": "Czosnek poprawiony",
+        "nutrition_basis": "g",
+        "kcal": 140,
+        "protein": 6,
+        "carbs": 30,
+        "fat": 0.5,
+    }
+    response = client.put(f"/api/products/{product['id']}", json=values)
+    assert response.status_code == 200
+    updated = response.json()
+    for key, value in values.items():
+        assert updated[key] == value
+    for key in ("id", "units", "unit_conversions", "is_custom", "created_at"):
+        assert updated[key] == product[key]
+    assert updated["unit_conversions"]["ząbek"] == 5
+    assert updated in client.get("/api/products").json()
+
+
+def test_edit_unknown_product_returns_404(client):
+    assert client.put(f"/api/products/{uuid4()}", json={"name": "Nieznany"}).status_code == 404
+
+
+@pytest.mark.parametrize("name", ["Czosnek", "CZOSNEK", "  czosnek  "])
+def test_edit_duplicate_is_case_insensitive_and_does_not_modify_product(client, name):
+    product = next(row for row in client.get("/api/products").json() if row["name"] == "Jajka")
+    response = client.put(f"/api/products/{product['id']}", json={"name": name})
+    assert response.status_code == 409
+    assert response.json()["detail"] == "Produkt o tej nazwie już istnieje."
+    assert product in client.get("/api/products").json()
+
+
+def test_edit_own_name_and_case_keeps_nutrition(client):
+    product = next(row for row in client.get("/api/products").json() if row["name"] == "Jajka")
+    for name in ("Jajka", "JAJKA", "  jajka  "):
+        response = client.put(f"/api/products/{product['id']}", json={"name": name})
+        assert response.status_code == 200
+        assert response.json()["name"] == name.strip()
+        assert response.json()["kcal"] == product["kcal"]
+        assert response.json()["nutrition_basis"] == product["nutrition_basis"]
+
+
+@pytest.mark.parametrize(
+    "values",
+    [
+        {"name": ""},
+        {"name": 1},
+        {"name": "Nowy", "units": ["g"]},
+        {"name": "Nowy", "unit_conversions": {}},
+        {"name": "Nowy", "kcal": -1},
+        {"name": "Nowy", "nutrition_basis": "kg"},
+        {"name": "Nowy", "protein": "1"},
+        {"name": "Nowy", "fat": True},
+        {"name": "Nowy", "nutrition_basis": None},
+    ],
+)
+def test_edit_validation_and_readonly_unit_fields(client, values):
+    product = next(row for row in client.get("/api/products").json() if row["name"] == "Jajka")
+    assert client.put(f"/api/products/{product['id']}", json=values).status_code == 422
+    assert product in client.get("/api/products").json()
+
+
+def test_edit_can_clear_optional_nutrition(client):
+    product = client.get("/api/products").json()[0]
+    response = client.put(
+        f"/api/products/{product['id']}",
+        json={
+            "name": product["name"],
+            "nutrition_basis": None,
+            "kcal": None,
+            "protein": None,
+            "carbs": None,
+            "fat": None,
+        },
+    )
+    assert response.status_code == 200
+    assert response.json()["kcal"] is None and response.json()["nutrition_basis"] is None

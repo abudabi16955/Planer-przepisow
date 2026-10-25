@@ -341,3 +341,31 @@ kolejnego zatwierdzenia; działa także dla dopasowań exact. Edycja ilości lub
 jednostki nie cofa flagi zatwierdzenia; niepoprawna wartość nadal blokuje zapis.
 Przyciski mają etykiety ARIA z nazwą produktu. Edycja danych katalogu produktów
 pozostaje osobnym zadaniem #62.
+
+### 3.6.1. Edycja produktu (2026-10-25)
+
+Po wybraniu produktu w wyszukiwarce składników i przy dopasowanym wierszu
+przeglądu importu dostępny jest przycisk „Edytuj produkt”. Ten sam formularz co
+„Nowy produkt” otwiera się z wypełnioną nazwą, podstawą i wartościami odżywczymi.
+Na telefonie jest dolnym arkuszem, na laptopie panelem w miejscu. Przyciski:
+„Zapisz zmiany” i „Anuluj”. Notka: „Zmiana dotyczy wszystkich przepisów z tym
+produktem.”. Jednostki i przeliczniki nie są edytowalne; nie usuwamy produktów.
+
+Zmieniać można nazwę, podstawę (100 g, 100 ml, 1 szt. lub brak) i kcal/białko/
+węgle/tłuszcz. Wybranie „brak” czyści wartości odżywcze. Duplikat nazwy blokuje
+zapis (bez względu na wielkość liter, z pominięciem własnego id). Serwer także
+odrzuca duplikat kodem 409: „Produkt o tej nazwie już istnieje.”. Zapis aktualizuje
+produkt w bieżącej liście `products` odpowiedzią serwera; nazwa i podpowiedzi
+makro odświeżają się od razu. Toast: „Zapisano produkt: <nazwa>”. Ilość składnika,
+jego jednostka i stan zatwierdzenia pozostają bez zmian.
+
+`PUT /api/products/{id}` edytuje wyłącznie name, nutrition_basis, kcal, protein,
+carbs i fat, z walidacją jak przy tworzeniu; 404 oznacza nieznane id. Zmiana samej
+nazwy zachowuje pominięte wartości. Jawne null czyści pole, o ile po zmianie
+nie pozostają wartości bez podstawy. Jednostki/przeliczniki w payloadzie są
+odrzucane; nie zmieniają się też id, is_custom i created_at.
+
+Makro liczone ze składników jest wyliczane z bieżącego katalogu produktów przy
+odczycie na froncie. Nie zapisujemy kopii obliczeń. Jawne wartości na porcję
+przepisu (ręczne lub zaakceptowane z importu WWW) mają pierwszeństwo zgodnie
+z sekcją 6.1 i nie są nadpisywane przy edycji produktu.

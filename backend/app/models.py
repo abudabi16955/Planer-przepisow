@@ -18,23 +18,15 @@ NutritionBasis = Literal["g", "ml", "szt."]
 NutritionValue = Annotated[float, Field(ge=0, allow_inf_nan=False, strict=True)]
 
 
-class ProductCreate(BaseModel):
+class ProductEdit(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, strict=True)]
-    units: Annotated[list[Unit], Field(min_length=1)]
     nutrition_basis: NutritionBasis | None = None
     kcal: NutritionValue | None = None
     protein: NutritionValue | None = None
     carbs: NutritionValue | None = None
     fat: NutritionValue | None = None
-
-    @field_validator("units")
-    @classmethod
-    def unique_units(cls, units):
-        if len(set(units)) != len(units):
-            raise ValueError("Jednostki nie mogą się powtarzać.")
-        return units
 
     @model_validator(mode="after")
     def nutrition_requires_basis(self):
@@ -43,6 +35,17 @@ class ProductCreate(BaseModel):
         ):
             raise ValueError("Wybierz podstawę wartości odżywczych.")
         return self
+
+
+class ProductCreate(ProductEdit):
+    units: Annotated[list[Unit], Field(min_length=1)]
+
+    @field_validator("units")
+    @classmethod
+    def unique_units(cls, units):
+        if len(set(units)) != len(units):
+            raise ValueError("Jednostki nie mogą się powtarzać.")
+        return units
 
 
 class Product(ProductCreate):

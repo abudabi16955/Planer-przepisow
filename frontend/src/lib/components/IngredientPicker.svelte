@@ -9,6 +9,9 @@
     initialAmount = '',
     initialQuantity,
     initialCreate = false,
+    initialEdit,
+    editorOnly = false,
+    onclose = () => {},
     onadd,
     products = $bindable<CatalogueProduct[]>([]),
     ingredients = $bindable<
@@ -26,6 +29,9 @@
     initialAmount?: string;
     initialQuantity?: number | null;
     initialCreate?: boolean;
+    initialEdit?: CatalogueProduct;
+    editorOnly?: boolean;
+    onclose?: () => void;
     onadd?: (ingredient: {
       product_id: string;
       quantity: number | null;
@@ -40,15 +46,31 @@
   let amount = $state(untrack(() => initialAmount));
   let expanded = $state(untrack(() => !!initialSearch && !initialCreate));
   let activeIndex = $state(-1);
-  let creating = $state(untrack(() => initialCreate));
-  let name = $state(untrack(() => initialSearch));
-  let units = $state<string[]>(
-    untrack(() => [
-      initialUnit && initialUnit !== 'do smaku' ? initialUnit : 'g',
-    ]),
+  let editing = $state<CatalogueProduct | null>(
+    untrack(() => initialEdit ?? null),
   );
-  let basis = $state('g');
-  let values = $state(['', '', '', '']);
+  let creating = $state(untrack(() => initialCreate || !!initialEdit));
+  let name = $state(untrack(() => initialEdit?.name ?? initialSearch));
+  let units = $state<string[]>(
+    untrack(() =>
+      initialEdit
+        ? [...initialEdit.units]
+        : [initialUnit && initialUnit !== 'do smaku' ? initialUnit : 'g'],
+    ),
+  );
+  let basis = $state(
+    untrack(() => (initialEdit ? (initialEdit.nutrition_basis ?? '') : 'g')),
+  );
+  let values = $state(
+    untrack(() =>
+      [
+        initialEdit?.kcal,
+        initialEdit?.protein,
+        initialEdit?.carbs,
+        initialEdit?.fat,
+      ].map((value) => value?.toString() ?? ''),
+    ),
+  );
   let error = $state('');
   let pending = $state(false);
   const options = [
@@ -79,6 +101,7 @@
   const duplicate = $derived(
     products.some(
       (p) =>
+        p.id !== editing?.id &&
         p.name.toLocaleLowerCase('pl') === name.trim().toLocaleLowerCase('pl'),
     ),
   );
@@ -93,7 +116,7 @@
     node.querySelector<HTMLInputElement>('input')?.focus();
     const keydown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        creating = false;
+        if (!pending) closePanel();
         return;
       }
       if (event.key === 'Enter' && event.target instanceof HTMLInputElement) {
@@ -170,7 +193,25 @@
     amount = '';
     expanded = false;
   }
+  function closePanel() {
+    creating = false;
+    editing = null;
+    if (editorOnly) onclose();
+  }
+  function editProduct(product: CatalogueProduct) {
+    editing = product;
+    name = product.name;
+    units = [...product.units];
+    basis = product.nutrition_basis ?? '';
+    values = [product.kcal, product.protein, product.carbs, product.fat].map(
+      (value) => value?.toString() ?? '',
+    );
+    error = '';
+    expanded = false;
+    creating = true;
+  }
   function openProduct() {
+    editing = null;
     name = query.trim();
     units = [initialUnit && initialUnit !== 'do smaku' ? initialUnit : 'g'];
     basis = 'g';
@@ -180,23 +221,52 @@
     expanded = false;
   }
   async function saveProduct() {
-    if (!name.trim() || duplicate || !units.length || pending) return;
+    if (
+      !name.trim() ||
+      duplicate ||
+      !units.length ||
+      pending ||
+      (!basis && values.some((value) => number(value) !== null))
+    )
+      return;
+    const target = editing;
     pending = true;
     error = '';
     try {
-      const product = await post<CatalogueProduct>('/api/products', {
-        name: name.trim(),
-        units,
-        nutrition_basis: values.some((v) => number(v) !== null) ? basis : null,
-        kcal: number(values[0]),
-        protein: number(values[1]),
-        carbs: number(values[2]),
-        fat: number(values[3]),
-      });
-      products = [...products, product];
-      choose(product);
-      creating = false;
-      showToast(`Dodano produkt do bazy: ${product.name}`);
+      const product = await post<CatalogueProduct>(
+        target
+          ? `/api/products/${encodeURIComponent(target.id)}`
+          : '/api/products',
+        {
+          name: name.trim(),
+          ...(target ? {} : { units }),
+          nutrition_basis: target
+            ? basis || null
+            : values.some((v) => number(v) !== null)
+              ? basis
+              : null,
+          kcal: number(values[0]),
+          protein: number(values[1]),
+          carbs: number(values[2]),
+          fat: number(values[3]),
+        },
+        target ? 'PUT' : 'POST',
+      );
+      if (target) {
+        products = products.map((item) =>
+          item.id === product.id ? product : item,
+        );
+        if (selected?.id === product.id) {
+          selected = product;
+          query = product.name;
+        }
+        showToast(`Zapisano produkt: ${product.name}`);
+      } else {
+        products = [...products, product];
+        choose(product);
+        showToast(`Dodano produkt do bazy: ${product.name}`);
+      }
+      closePanel();
     } catch (e) {
       error =
         e instanceof Error && !(e instanceof TypeError)
@@ -209,108 +279,123 @@
 </script>
 
 <section class="ingredients">
-  <h2>Składniki</h2>
-  {#each ingredients as ingredient, index (index)}
-    <div class="row">
-      <span>{products.find((p) => p.id === ingredient.product_id)?.name}</span
-      ><span>{formatQuantity(ingredient.quantity, ingredient.unit)}</span
-      ><button
-        type="button"
-        aria-label={`Usuń składnik: ${products.find((p) => p.id === ingredient.product_id)?.name}`}
-        onclick={() =>
-          (ingredients = ingredients.filter((_, i) => i !== index))}>×</button
-      >
-    </div>
-  {/each}
-  <label for={`${uid}-search`}>Dodaj składnik z bazy produktów</label>
-  <input
-    id={`${uid}-search`}
-    role="combobox"
-    aria-expanded={expanded}
-    aria-controls={`${uid}-results`}
-    aria-activedescendant={expanded && activeIndex >= 0
-      ? `${uid}-option-${activeIndex}`
-      : undefined}
-    autocomplete="off"
-    placeholder="Szukaj produktu, np. mleko"
-    bind:value={query}
-    oninput={() => {
-      selected = null;
-      activeIndex = -1;
-      expanded = true;
-    }}
-    onfocus={() => (expanded = true)}
-    onkeydown={(event) => {
-      if (event.key === 'Escape') expanded = false;
-      else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-        event.preventDefault();
+  {#if !editorOnly}<h2>Składniki</h2>
+    {#each ingredients as ingredient, index (index)}
+      <div class="row">
+        <span>{products.find((p) => p.id === ingredient.product_id)?.name}</span
+        ><span>{formatQuantity(ingredient.quantity, ingredient.unit)}</span
+        ><button
+          type="button"
+          aria-label={`Usuń składnik: ${products.find((p) => p.id === ingredient.product_id)?.name}`}
+          onclick={() =>
+            (ingredients = ingredients.filter((_, i) => i !== index))}>×</button
+        >
+      </div>
+    {/each}
+    <label for={`${uid}-search`}>Dodaj składnik z bazy produktów</label>
+    <input
+      id={`${uid}-search`}
+      role="combobox"
+      aria-expanded={expanded}
+      aria-controls={`${uid}-results`}
+      aria-activedescendant={expanded && activeIndex >= 0
+        ? `${uid}-option-${activeIndex}`
+        : undefined}
+      autocomplete="off"
+      placeholder="Szukaj produktu, np. mleko"
+      bind:value={query}
+      oninput={() => {
+        selected = null;
+        activeIndex = -1;
         expanded = true;
-        activeIndex = Math.max(
-          0,
-          Math.min(
-            matches.length - 1,
-            activeIndex + (event.key === 'ArrowDown' ? 1 : -1),
-          ),
-        );
-      } else if (event.key === 'Enter' && expanded) {
-        event.preventDefault();
-        const match = matches[Math.max(0, activeIndex)];
-        if (match) choose(match);
-      }
-    }}
-  />
-  {#if expanded}
-    <div id={`${uid}-results`} role="listbox" aria-label="Produkty">
-      {#each matches as product, index (product.id)}<button
-          type="button"
-          role="option"
-          id={`${uid}-option-${index}`}
-          aria-selected={index === activeIndex}
-          onclick={() => choose(product)}
-          >{product.name}<small>jedn.: {product.units[0]}</small></button
-        >{/each}
-      {#if !matches.length}<p>Nie ma takiego produktu w bazie.</p>{/if}
-    </div>
-    <button class="new" type="button" onclick={openProduct}
-      >Nie ma na liście? Dodaj „{query.trim()}” jako nowy produkt</button
-    >
-  {/if}
-  {#if selected}
-    <div class="chips">
-      {#each [...selected.units, ''] as choice (choice)}<button
-          type="button"
-          class:active={unit === choice}
-          onclick={() => (unit = choice)}>{choice || 'do smaku'}</button
-        >{/each}
-    </div>
-    {#if unit}<label
-        >Ilość<input
-          inputmode="decimal"
-          bind:value={amount}
-          oninput={() => (amountChanged = true)}
-          placeholder="np. 1,5"
-        /></label
-      >{/if}
-    <button type="button" class="primary" disabled={!canAdd} onclick={add}
-      >Dodaj składnik</button
-    >
+      }}
+      onfocus={() => (expanded = true)}
+      onkeydown={(event) => {
+        if (event.key === 'Escape') expanded = false;
+        else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+          event.preventDefault();
+          expanded = true;
+          activeIndex = Math.max(
+            0,
+            Math.min(
+              matches.length - 1,
+              activeIndex + (event.key === 'ArrowDown' ? 1 : -1),
+            ),
+          );
+        } else if (event.key === 'Enter' && expanded) {
+          event.preventDefault();
+          const match = matches[Math.max(0, activeIndex)];
+          if (match) choose(match);
+        }
+      }}
+    />
+    {#if expanded}
+      <div id={`${uid}-results`} role="listbox" aria-label="Produkty">
+        {#each matches as product, index (product.id)}<button
+            type="button"
+            role="option"
+            id={`${uid}-option-${index}`}
+            aria-selected={index === activeIndex}
+            onclick={() => choose(product)}
+            >{product.name}<small>jedn.: {product.units[0]}</small></button
+          >{/each}
+        {#if !matches.length}<p>Nie ma takiego produktu w bazie.</p>{/if}
+      </div>
+      <button class="new" type="button" onclick={openProduct}
+        >Nie ma na liście? Dodaj „{query.trim()}” jako nowy produkt</button
+      >
+    {/if}
+    {#if selected}
+      <button
+        type="button"
+        class="new"
+        aria-label={`Edytuj produkt: ${selected.name}`}
+        onclick={() => {
+          if (selected) editProduct(selected);
+        }}>Edytuj produkt</button
+      >
+      <div class="chips">
+        {#each [...selected.units, ''] as choice (choice)}<button
+            type="button"
+            class:active={unit === choice}
+            onclick={() => (unit = choice)}>{choice || 'do smaku'}</button
+          >{/each}
+      </div>
+      {#if unit}<label
+          >Ilość<input
+            inputmode="decimal"
+            bind:value={amount}
+            oninput={() => (amountChanged = true)}
+            placeholder="np. 1,5"
+          /></label
+        >{/if}
+      <button type="button" class="primary" disabled={!canAdd} onclick={add}
+        >Dodaj składnik</button
+      >
+    {/if}
   {/if}
   {#if creating}
     <button
       class="backdrop"
       type="button"
       aria-label="Zamknij"
-      onclick={() => (creating = false)}
+      disabled={pending}
+      onclick={closePanel}
     ></button>
     <div
       class="product-panel"
       role="dialog"
-      aria-label="Nowy produkt"
+      aria-label={editing ? 'Edytuj produkt' : 'Nowy produkt'}
       tabindex="-1"
       use:focusPanel
     >
-      <h2>Nowy produkt</h2>
-      <button type="button" onclick={() => (creating = false)}>Anuluj</button>
+      <h2>{editing ? 'Edytuj produkt' : 'Nowy produkt'}</h2>
+      {#if editing}<p>
+          Zmiana dotyczy wszystkich przepisów z tym produktem.
+        </p>{/if}
+      <button type="button" disabled={pending} onclick={closePanel}
+        >Anuluj</button
+      >
       <label
         >Nazwa produktu<input
           placeholder="np. Sumak mielony"
@@ -318,25 +403,33 @@
         /></label
       >
       {#if duplicate}<p role="alert">Produkt o tej nazwie już istnieje.</p>{/if}
-      <p>W jakich jednostkach go dodajesz? (pierwsza wybrana jest domyślna)</p>
-      <div class="chips">
-        {#each options as option (option)}<button
-            type="button"
-            aria-pressed={units.includes(option)}
-            class:active={units.includes(option)}
-            onclick={() =>
-              (units = units.includes(option)
-                ? units.filter((u) => u !== option)
-                : [...units, option])}>{option}</button
-          >{/each}
-      </div>
+      {#if !editing}<p>
+          W jakich jednostkach go dodajesz? (pierwsza wybrana jest domyślna)
+        </p>
+        <div class="chips">
+          {#each options as option (option)}<button
+              type="button"
+              aria-pressed={units.includes(option)}
+              class:active={units.includes(option)}
+              onclick={() =>
+                (units = units.includes(option)
+                  ? units.filter((u) => u !== option)
+                  : [...units, option])}>{option}</button
+            >{/each}
+        </div>
+      {/if}
       <h3>Wartości odżywcze (opcjonalnie)</h3>
       <div class="chips">
-        {#each ['g', 'ml', 'szt.'] as option (option)}<button
+        {#each editing ? ['', 'g', 'ml', 'szt.'] : ['g', 'ml', 'szt.'] as option (option)}<button
             type="button"
             class:active={basis === option}
-            onclick={() => (basis = option)}
-            >na {option === 'szt.' ? '1' : '100'} {option}</button
+            onclick={() => {
+              basis = option;
+              if (!option) values = ['', '', '', ''];
+            }}
+            >{option
+              ? `na ${option === 'szt.' ? '1' : '100'} ${option}`
+              : 'brak'}</button
           >{/each}
       </div>
       <div class="values">
@@ -352,8 +445,13 @@
       <button
         type="button"
         class="primary"
-        disabled={pending || !name.trim() || duplicate || !units.length}
-        onclick={saveProduct}>Zapisz produkt</button
+        disabled={pending ||
+          !name.trim() ||
+          duplicate ||
+          !units.length ||
+          (!basis && values.some((value) => number(value) !== null))}
+        onclick={saveProduct}
+        >{editing ? 'Zapisz zmiany' : 'Zapisz produkt'}</button
       >
     </div>
   {/if}
