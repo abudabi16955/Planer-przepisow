@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import signal
 import subprocess
@@ -9,6 +10,19 @@ from urllib.parse import urlsplit
 from uuid import uuid4
 
 from app.importers.base import ImportError, ImportResult, Limits, platform_for_url
+
+logger = logging.getLogger(__name__)
+
+DEFAULT_FORMAT_SELECTOR = (
+    "bestvideo*[vcodec!*=av01][vcodec!*=av1][vcodec!=unknown][height<=1080]+bestaudio"
+    "/bestvideo*[vcodec!*=av01][vcodec!*=av1][vcodec!=unknown][width<=1080]+bestaudio"
+    "/best[vcodec!*=av01][vcodec!*=av1][vcodec!=unknown][height<=1080]"
+    "/best[vcodec!*=av01][vcodec!*=av1][vcodec!=unknown][width<=1080]"
+    "/best"
+    "/bestvideo*[height<=1080]+bestaudio"
+    "/bestvideo*[width<=1080]+bestaudio"
+    "/bestvideo*+bestaudio/best"
+)
 
 
 class YtDlpImporter:
@@ -57,9 +71,13 @@ class YtDlpImporter:
             str(limits.timeout_s),
             "--max-filesize",
             str(limits.max_video_bytes),
+            "--format-sort",
+            "res:1080,vcodec:h264,ext:mp4:m4a",
             "--format",
-            "best[ext=mp4][height<=1080]/bestvideo[ext=mp4][height<=1080]+bestaudio[ext=m4a]",
+            DEFAULT_FORMAT_SELECTOR,
             "--merge-output-format",
+            "mp4",
+            "--remux-video",
             "mp4",
             "--write-thumbnail",
             "--convert-thumbnails",
@@ -90,7 +108,8 @@ class YtDlpImporter:
                     process.wait()
                     raise
                 log.seek(max(0, log.tell() - 8192))
-                message = log.read(8192).decode("utf-8", errors="replace").lower()
+                raw_log = log.read(8192).decode("utf-8", errors="replace")
+                message = raw_log.lower()
             if process.returncode:
                 code = "private_or_missing"
                 if "unsupported url" in message:
@@ -99,17 +118,24 @@ class YtDlpImporter:
                     code = "too_large"
                 elif "timed out" in message:
                     code = "timeout"
-                elif "no module named" in message:
+                elif "no module named" in message or "requested format is not available" in message:
                     code = "unavailable"
+                tail = "\n".join(raw_log.strip().splitlines()[-10:])
+                logger.warning("yt-dlp import failed (%s): %s", code, tail)
                 raise ImportError(code)
             video = workdir / (stem + ".mp4")
             info = workdir / (stem + ".info.json")
             if not video.is_file() or video.is_symlink() or not info.is_file():
-                raise ImportError(
+                code = (
                     "too_large"
                     if "max-filesize" in message or "larger than" in message
+                    else "unavailable"
+                    if "requested format is not available" in message
                     else "private_or_missing"
                 )
+                tail = "\n".join(raw_log.strip().splitlines()[-10:])
+                logger.warning("yt-dlp missing output files (%s): %s", code, tail)
+                raise ImportError(code)
             metadata = json.loads(info.read_text(encoding="utf-8"))
             if metadata.get("availability") in (
                 "private",
@@ -121,7 +147,18 @@ class YtDlpImporter:
             size = video.stat().st_size
             if size > limits.max_video_bytes:
                 raise ImportError("too_large")
-            if not size or (metadata.get("height") or 0) > 1080:
+            width = metadata.get("width")
+            height = metadata.get("height")
+            dims = [d for d in (width, height) if isinstance(d, (int, float)) and d > 0]
+            min_dim = min(dims) if dims else 0
+            if not size or min_dim > 1080:
+                if min_dim > 1080:
+                    logger.warning(
+                        "Video rejected: min dimension %s exceeds 1080 limit (%sx%s)",
+                        min_dim,
+                        width,
+                        height,
+                    )
                 raise ImportError("private_or_missing")
             thumbnail = workdir / (stem + ".jpg")
             if not thumbnail.is_file() or thumbnail.is_symlink():

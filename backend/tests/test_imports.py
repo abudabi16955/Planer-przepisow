@@ -279,11 +279,22 @@ if mode == 'timeout': time.sleep(10)
 if mode.startswith('error:'):
     print(mode.split(':',1)[1], file=sys.stderr)
     sys.exit(1)
-metadata = {'title': 'Tytuł', 'description': '<script>literal text</script>', 'height': 720}
+metadata = {'title': 'Tytuł', 'description': '<script>literal text</script>', 'height': 720, 'width': 1280}
 if mode == 'private': metadata['availability'] = 'private'
-if mode == 'height': metadata['height'] = 2160
+if mode == 'height':
+    metadata['height'] = 2160
+    metadata.pop('width', None)
 if mode == 'large': video.write_bytes(b'x' * 1001)
 if mode == 'missing': video.unlink()
+if mode == 'vertical_720':
+    metadata['width'] = 720
+    metadata['height'] = 1280
+if mode == 'vertical_1080':
+    metadata['width'] = 1080
+    metadata['height'] = 1920
+if mode == 'vertical_oversized':
+    metadata['width'] = 1152
+    metadata['height'] = 2048
 video.with_suffix('.info.json').write_text(json.dumps(metadata))
 video.with_suffix('.jpg').write_bytes(b'thumbnail')
 """)
@@ -318,7 +329,16 @@ def test_subprocess_success_flags_and_plain_text(script):
     ):
         assert flag in args
     assert "--username" not in args and "--password" not in args
-    assert "height<=1080" in args[args.index("--format") + 1]
+    assert "--format-sort" in args
+    sort_spec = args[args.index("--format-sort") + 1]
+    assert "res:1080" in sort_spec
+    assert "vcodec:h264" in sort_spec
+    assert "ext:mp4:m4a" in sort_spec
+    assert "--format" in args
+    format_spec = args[args.index("--format") + 1]
+    assert "height<=1080" in format_spec
+    assert "--remux-video" in args
+    assert args[args.index("--remux-video") + 1] == "mp4"
     assert popen.call_args.kwargs["start_new_session"] is True
     assert YtDlpImporter().command == [sys.executable, "-m", "yt_dlp"]
 
@@ -332,16 +352,133 @@ def test_subprocess_success_flags_and_plain_text(script):
         ("error:larger than max-filesize", "too_large"),
         ("error:connection timed out", "timeout"),
         ("error:No module named yt_dlp", "unavailable"),
+        ("error:Requested format is not available", "unavailable"),
         ("private", "private_or_missing"),
         ("height", "private_or_missing"),
         ("large", "too_large"),
         ("missing", "private_or_missing"),
+        ("vertical_oversized", "private_or_missing"),
     ],
 )
 def test_subprocess_errors(script, mode, code):
     with pytest.raises(ImportError) as error:
         fetch_stub(script, mode, timeout=0.1 if mode == "timeout" else 2)
     assert error.value.code == code
+
+
+@pytest.mark.parametrize("mode", ["vertical_720", "vertical_1080"])
+def test_vertical_video_accepted(script, mode):
+    result = fetch_stub(script, mode)
+    assert result.video_path.suffix == ".mp4"
+    assert result.size_bytes == len(b"fake video")
+
+
+def test_ytdlp_format_selection_preferences():
+    import yt_dlp
+
+    from app.importers.ytdlp import DEFAULT_FORMAT_SELECTOR
+
+    f_av01 = {
+        "format_id": "720p_av01",
+        "vcodec": "av01.0.05M.08",
+        "acodec": "none",
+        "width": 720,
+        "height": 1280,
+        "ext": "mp4",
+        "url": "https://example.com/av01.mp4",
+    }
+    f_audio = {
+        "format_id": "audio",
+        "vcodec": "none",
+        "acodec": "mp4a.40.5",
+        "width": None,
+        "height": None,
+        "ext": "m4a",
+        "url": "https://example.com/audio.m4a",
+    }
+    f_hd_unknown = {
+        "format_id": "hd",
+        "vcodec": "unknown",
+        "acodec": "unknown",
+        "width": None,
+        "height": None,
+        "ext": "mp4",
+        "url": "https://example.com/hd.mp4",
+    }
+    f_h264 = {
+        "format_id": "720p_h264",
+        "vcodec": "avc1.64001f",
+        "acodec": "none",
+        "width": 720,
+        "height": 1280,
+        "ext": "mp4",
+        "url": "https://example.com/h264.mp4",
+    }
+
+    ydl = yt_dlp.YoutubeDL({"format_sort": ["res:1080", "vcodec:h264", "ext:mp4:m4a"]})
+    selector = ydl.build_format_selector(DEFAULT_FORMAT_SELECTOR)
+
+    # 1. fake formats: av01 720x1280 + progresywny hd z unknown -> wybrany hd
+    case1 = [dict(f) for f in (f_av01, f_audio, f_hd_unknown)]
+    assert [f["format_id"] for f in ydl._select_formats(case1, selector)] == ["hd"]
+
+    # 2. tylko av01 -> av01
+    case2 = [dict(f) for f in (f_av01, f_audio)]
+    assert [f["format_id"] for f in ydl._select_formats(case2, selector)] == ["720p_av01+audio"]
+
+    # 3. h264 720x1280 znany -> h264 (nawet gdy jest hd z unknown i av01)
+    case3 = [dict(f) for f in (f_h264, f_audio, f_av01, f_hd_unknown)]
+    assert [f["format_id"] for f in ydl._select_formats(case3, selector)] == ["720p_h264+audio"]
+
+
+def test_ytdlp_format_selection_picks_lower_variant_when_no_h264():
+    import yt_dlp
+
+    from app.importers.ytdlp import DEFAULT_FORMAT_SELECTOR
+
+    formats = [
+        {
+            "format_id": "1152x2048",
+            "vcodec": "av01.0.08M.08",
+            "acodec": "none",
+            "ext": "mp4",
+            "width": 1152,
+            "height": 2048,
+            "url": "https://example.com/2k.mp4",
+        },
+        {
+            "format_id": "720x1280",
+            "vcodec": "av01.0.05M.08",
+            "acodec": "none",
+            "ext": "mp4",
+            "width": 720,
+            "height": 1280,
+            "url": "https://example.com/720.mp4",
+        },
+        {
+            "format_id": "audio",
+            "vcodec": "none",
+            "acodec": "mp4a.40.5",
+            "width": None,
+            "height": None,
+            "ext": "m4a",
+            "url": "https://example.com/audio.m4a",
+        },
+    ]
+    ydl = yt_dlp.YoutubeDL({"format_sort": ["res:1080", "vcodec:h264", "ext:mp4:m4a"]})
+    selector = ydl.build_format_selector(DEFAULT_FORMAT_SELECTOR)
+    assert [f["format_id"] for f in ydl._select_formats(formats, selector)] == ["720x1280+audio"]
+
+
+def test_subprocess_error_logs_warning(script, caplog):
+    import logging
+
+    with caplog.at_level(logging.WARNING):
+        with pytest.raises(ImportError) as exc_info:
+            fetch_stub(script, "error:Requested format is not available")
+        assert exc_info.value.code == "unavailable"
+    assert "yt-dlp import failed (unavailable)" in caplog.text
+    assert "Requested format is not available" in caplog.text
 
 
 def test_broken_dependency_disables_import(clean_database, tmp_path):
