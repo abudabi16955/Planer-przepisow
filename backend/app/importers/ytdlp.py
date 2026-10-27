@@ -13,6 +13,17 @@ from app.importers.base import ImportError, ImportResult, Limits, platform_for_u
 
 logger = logging.getLogger(__name__)
 
+DEFAULT_FORMAT_SELECTOR = (
+    "bestvideo*[vcodec!*=av01][vcodec!*=av1][vcodec!=unknown][height<=1080]+bestaudio"
+    "/bestvideo*[vcodec!*=av01][vcodec!*=av1][vcodec!=unknown][width<=1080]+bestaudio"
+    "/best[vcodec!*=av01][vcodec!*=av1][vcodec!=unknown][height<=1080]"
+    "/best[vcodec!*=av01][vcodec!*=av1][vcodec!=unknown][width<=1080]"
+    "/best"
+    "/bestvideo*[height<=1080]+bestaudio"
+    "/bestvideo*[width<=1080]+bestaudio"
+    "/bestvideo*+bestaudio/best"
+)
+
 
 class YtDlpImporter:
     def __init__(self, command=None):
@@ -62,7 +73,11 @@ class YtDlpImporter:
             str(limits.max_video_bytes),
             "--format-sort",
             "res:1080,vcodec:h264,ext:mp4:m4a",
+            "--format",
+            DEFAULT_FORMAT_SELECTOR,
             "--merge-output-format",
+            "mp4",
+            "--remux-video",
             "mp4",
             "--write-thumbnail",
             "--convert-thumbnails",
