@@ -13,15 +13,13 @@ class FakeImporter:
     def fetch(self, url, workdir, limits):
         platform = platform_for_url(url)
         video = workdir / f"{uuid4()}.mp4"
-        thumbnail = workdir / f"{uuid4()}.jpg"
         fixtures = Path(__file__).with_name("fixtures")
         content = (fixtures / "video.mp4").read_bytes()
         if len(content) > limits.max_video_bytes:
             raise ImportError("too_large")
         video.write_bytes(content)
-        thumbnail.write_bytes((fixtures / "thumbnail.jpg").read_bytes())
         return ImportResult(
-            video, thumbnail, "Opis publicznego posta", "Przepis", platform, len(content)
+            video, None, "Opis publicznego posta", "Przepis", platform, len(content)
         )
 
 

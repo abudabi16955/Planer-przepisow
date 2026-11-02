@@ -90,7 +90,6 @@
   function imported(job: ImportJob | null) {
     importResult = job;
     linkChanged = true;
-    if (job && !title.trim()) title = job.title || '';
   }
   let error = $state('');
   const number = (value: string): number | null => {
@@ -340,17 +339,11 @@
     <label class="photo file"
       >{#if source === 'link' && webDraft?.photo_url && !photo}<span
           >Zdjęcie ze strony zapisze się razem z przepisem.</span
-        >{/if}{#if source === 'link' && importResult?.thumbnail && !photo}<img
-          class="existing-photo"
-          src={fileUrl(importResult.thumbnail) ?? undefined}
-          alt="Okładka z wideo"
-        />{:else if initialRecipe?.photo}<img
+        >{/if}{#if initialRecipe?.photo}<img
           class="existing-photo"
           src={fileUrl(initialRecipe.photo) ?? undefined}
           alt="Zdjęcie dania"
-        />{/if}{source === 'link' && importResult?.thumbnail && !photo
-        ? 'Okładka z wideo · zmień zdjęcie'
-        : 'Dodaj zdjęcie dania'}<input
+        />{/if}Dodaj zdjęcie dania<input
         type="file"
         accept="image/*"
         onchange={(event) => (photo = event.currentTarget.files?.[0] ?? null)}

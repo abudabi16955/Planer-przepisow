@@ -5,7 +5,6 @@ test('Link → import fake → zapis → odtwarzanie wideo i opis źródła', as
   let id: string | undefined;
   try {
     await page.goto('/dodaj');
-    await page.getByLabel('Nazwa', { exact: true }).fill(title);
     await page.getByLabel('Porcje', { exact: true }).fill('2');
     const save = page.getByRole('button', { name: 'Zapisz przepis', exact: true });
     await expect(save).toBeDisabled();
@@ -14,8 +13,12 @@ test('Link → import fake → zapis → odtwarzanie wideo i opis źródła', as
     await expect(page.getByText(/Wideo zapisane ·/)).toBeVisible();
     await expect(page.getByText('Wykryto: Instagram', { exact: true })).toBeVisible();
     await expect(page.getByText('Opis z posta: „Opis publicznego posta”', { exact: true })).toBeVisible();
-    await expect(page.getByText('Okładka z wideo · zmień zdjęcie', { exact: true })).toBeVisible();
-    await expect(page.getByLabel('Nazwa', { exact: true })).toHaveValue(title);
+    await expect(page.getByText('Dodaj zdjęcie dania', { exact: true })).toBeVisible();
+    await expect(page.getByText('Okładka z wideo · zmień zdjęcie')).toHaveCount(0);
+    await expect(page.getByLabel('Nazwa', { exact: true })).toHaveValue('');
+    await expect(save).toBeDisabled();
+    await page.getByLabel('Nazwa', { exact: true }).fill(title);
+    await expect(save).toBeEnabled();
     const created = page.waitForResponse(response => response.url().endsWith('/api/recipes') && response.request().method() === 'POST');
     await save.click();
     const response = await created;
