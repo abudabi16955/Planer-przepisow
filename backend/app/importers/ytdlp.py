@@ -79,9 +79,6 @@ class YtDlpImporter:
             "mp4",
             "--remux-video",
             "mp4",
-            "--write-thumbnail",
-            "--convert-thumbnails",
-            "jpg",
             "--write-info-json",
             "--output",
             str(workdir / (stem + ".%(ext)s")),
@@ -160,14 +157,9 @@ class YtDlpImporter:
                         height,
                     )
                 raise ImportError("private_or_missing")
-            thumbnail = workdir / (stem + ".jpg")
-            if not thumbnail.is_file() or thumbnail.is_symlink():
-                thumbnail = None
-            elif thumbnail.stat().st_size > limits.max_photo_bytes:
-                raise ImportError("too_large")
             return ImportResult(
                 video,
-                thumbnail,
+                None,
                 str(metadata.get("description") or ""),
                 str(metadata.get("title") or ""),
                 platform,

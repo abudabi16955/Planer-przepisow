@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy, untrack } from 'svelte';
-  import { fileUrl, type Recipe } from '../api';
+  import type { Recipe } from '../api';
   import {
     requestImport,
     readImport,
@@ -204,10 +204,6 @@
   {:else if job || existing}
     {@const attachment = job?.video || existing}
     <div class="success">
-      {#if job?.thumbnail && fileUrl(job.thumbnail)}<img
-          src={fileUrl(job.thumbnail)!}
-          alt="Miniatura wideo"
-        />{/if}
       <div>
         <strong
           >Wideo zapisane · {formatFileSize(attachment!.size_bytes)}</strong
@@ -315,13 +311,6 @@
     padding: 12px;
     border-radius: 14px;
     background: var(--background);
-  }
-  .success img {
-    flex: none;
-    width: 56px;
-    height: 100px;
-    border-radius: 8px;
-    object-fit: cover;
   }
   .success strong {
     font-size: 14px;

@@ -6,6 +6,7 @@ from uuid import uuid4
 
 import pytest
 from fastapi.testclient import TestClient
+from psycopg.types.json import Jsonb
 
 from app.config import Settings
 from app.importers.base import ImportError, Limits, platform_for_url
@@ -104,13 +105,13 @@ def test_redirects_cannot_escape_allowlist():
     assert result.full_url == "https://www.facebook.com/reel/123"
 
 
-def test_fake_job_attaches_video_thumbnail_and_plain_description(client):
+def test_fake_job_attaches_video_and_plain_description(client):
     job = imported(client)
     assert job["status"] == "done"
     assert job["platform"] == "instagram"
     storage = client.app.state.storage
-    for field in ("video", "thumbnail"):
-        assert storage.path(job[field]["path"]).is_file()
+    assert storage.path(job["video"]["path"]).is_file()
+    assert job["thumbnail"] is None
     text = "<script>Do not execute me</script> $(touch /tmp/not-a-command)"
     with client.app.state.pool.connection() as connection:
         connection.execute(
@@ -123,14 +124,12 @@ def test_fake_job_attaches_video_thumbnail_and_plain_description(client):
     assert recipe["source_url"] == URL
     assert recipe["source_platform"] == "instagram"
     assert recipe["video"]["path"].startswith("videos/")
-    assert recipe["photo"]["path"].startswith("thumbs/")
-    for field in ("video", "photo"):
-        assert client.get("/files/" + recipe[field]["path"]).status_code == 200
+    assert recipe["photo"] is None
+    assert client.get("/files/" + recipe["video"]["path"]).status_code == 200
     assert list((storage.root / "tmp").iterdir()) == []
     assert client.post("/api/recipes", json=payload(job)).status_code == 422
     assert client.delete("/api/recipes/" + recipe["id"]).status_code == 204
     assert not storage.path(recipe["video"]["path"]).exists()
-    assert not storage.path(recipe["photo"]["path"]).exists()
 
 
 @pytest.mark.parametrize(
@@ -163,17 +162,11 @@ def test_unexpected_plugin_crash_is_unavailable(client):
 def test_recipe_failure_cleans_import_files_and_record(client):
     job = imported(client)
     storage = client.app.state.storage
-    original = storage.move
-    calls = 0
 
-    def fail_second(source, target):
-        nonlocal calls
-        calls += 1
-        if calls == 2:
-            raise OSError("disk full")
-        return original(source, target)
+    def fail_first(source, target):
+        raise OSError("disk full")
 
-    with patch.object(storage, "move", side_effect=fail_second):
+    with patch.object(storage, "move", side_effect=fail_first):
         assert client.post("/api/recipes", json=payload(job)).status_code == 500
     assert client.get("/api/recipes").json() == []
     for directory in ("tmp", "videos", "thumbs"):
@@ -210,8 +203,7 @@ def test_cleanup_after_24_hours_preserves_referenced_or_locked_files(client):
     job = imported(client)
     storage = client.app.state.storage
     jobs = client.app.state.import_jobs
-    for field in ("video", "thumbnail"):
-        os.utime(storage.path(job[field]["path"]), (1, 1))
+    os.utime(storage.path(job["video"]["path"]), (1, 1))
     storage.cleanup_tmp(jobs.pool)
     assert storage.path(job["video"]["path"]).exists()
     with jobs.pool.connection() as connection:
@@ -226,7 +218,6 @@ def test_cleanup_after_24_hours_preserves_referenced_or_locked_files(client):
     jobs.cleanup()
     assert client.get("/api/imports/" + job["id"]).status_code == 404
     assert not storage.path(job["video"]["path"]).exists()
-    assert not storage.path(job["thumbnail"]["path"]).exists()
     saved = imported(client)
     recipe = client.post("/api/recipes", json=payload(saved)).json()
     with jobs.pool.connection() as connection:
@@ -236,7 +227,6 @@ def test_cleanup_after_24_hours_preserves_referenced_or_locked_files(client):
         )
     jobs.cleanup()
     assert storage.path(recipe["video"]["path"]).exists()
-    assert storage.path(recipe["photo"]["path"]).exists()
 
 
 def test_disabled_and_missing_dependency_do_not_break_application(clean_database, tmp_path):
@@ -296,7 +286,6 @@ if mode == 'vertical_oversized':
     metadata['width'] = 1152
     metadata['height'] = 2048
 video.with_suffix('.info.json').write_text(json.dumps(metadata))
-video.with_suffix('.jpg').write_bytes(b'thumbnail')
 """)
     return file
 
@@ -312,7 +301,7 @@ def fetch_stub(script, mode, timeout=2):
 def test_subprocess_success_flags_and_plain_text(script):
     result = fetch_stub(script, "success")
     assert result.video_path.suffix == ".mp4"
-    assert result.thumbnail_path.suffix == ".jpg"
+    assert result.thumbnail_path is None
     assert result.description == "<script>literal text</script>"
     assert result.size_bytes == len(b"fake video")
     # Inspect a real subprocess invocation without allowing network access.
@@ -325,9 +314,10 @@ def test_subprocess_success_flags_and_plain_text(script):
         "--no-cookies",
         "--no-cookies-from-browser",
         "--max-filesize",
-        "--write-thumbnail",
     ):
         assert flag in args
+    assert "--write-thumbnail" not in args
+    assert "--convert-thumbnails" not in args
     assert "--username" not in args and "--password" not in args
     assert "--format-sort" in args
     sort_spec = args[args.index("--format-sort") + 1]
@@ -535,8 +525,49 @@ def test_real_subprocess_timeout_is_cleaned_by_job_runner(client, script):
     assert list((jobs.storage.root / "tmp").iterdir()) == []
 
 
-def test_user_photo_overrides_import_thumbnail_without_orphans(client):
+def test_user_photo_attaches_to_video_recipe_without_orphans(client):
     job = imported(client)
+    response = client.post("/api/uploads", files={"file": ("photo.jpg", b"photo", "image/jpeg")})
+    assert response.status_code == 201
+    saved = client.post(
+        "/api/recipes", json=payload(job) | {"photo_upload_id": response.json()["upload_id"]}
+    )
+    assert saved.status_code == 201
+    photo = saved.json()["photo"]
+    assert photo["path"].startswith("photos/")
+    assert client.get("/files/" + photo["path"]).content == b"photo"
+    assert list((client.app.state.storage.root / "tmp").iterdir()) == []
+    assert list((client.app.state.storage.root / "thumbs").iterdir()) == []
+
+
+def test_legacy_thumbnail_in_import_job_is_safely_supported(client):
+    job = imported(client)
+    storage = client.app.state.storage
+    thumb_path = f"tmp/{uuid4()}.jpg"
+    storage.path(thumb_path).write_bytes(b"legacy thumb")
+    with client.app.state.pool.connection() as connection:
+        connection.execute(
+            "UPDATE import_job SET thumbnail = %s WHERE id = %s",
+            (Jsonb({"path": thumb_path, "mime_type": "image/jpeg", "size_bytes": 12}), job["id"]),
+        )
+    saved = client.post("/api/recipes", json=payload(job))
+    assert saved.status_code == 201
+    photo = saved.json()["photo"]
+    assert photo["path"].startswith("thumbs/")
+    assert client.get("/files/" + photo["path"]).content == b"legacy thumb"
+    assert not storage.path(thumb_path).exists()
+
+
+def test_user_photo_overrides_legacy_import_thumbnail_without_orphans(client):
+    job = imported(client)
+    storage = client.app.state.storage
+    thumb_path = f"tmp/{uuid4()}.jpg"
+    storage.path(thumb_path).write_bytes(b"legacy thumb")
+    with client.app.state.pool.connection() as connection:
+        connection.execute(
+            "UPDATE import_job SET thumbnail = %s WHERE id = %s",
+            (Jsonb({"path": thumb_path, "mime_type": "image/jpeg", "size_bytes": 12}), job["id"]),
+        )
     response = client.post("/api/uploads", files={"file": ("photo.jpg", b"photo", "image/jpeg")})
     assert response.status_code == 201
     saved = client.post(
@@ -580,12 +611,12 @@ def test_only_one_import_runs_at_a_time(client):
     assert calls == 2
 
 
-def test_cleanup_cannot_remove_retired_thumbnail_before_rollback(client):
+def test_cleanup_cannot_remove_retired_file_before_rollback(client):
     from app.storage import FileChanges
 
     job = imported(client)
     storage = client.app.state.storage
-    path = job["thumbnail"]["path"]
+    path = job["video"]["path"]
     os.utime(storage.path(path), (1, 1))
     changes = FileChanges(storage)
     changes.retire(path)

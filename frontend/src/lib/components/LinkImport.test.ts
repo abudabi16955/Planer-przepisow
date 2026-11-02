@@ -14,6 +14,7 @@ import RecipeDetails from './RecipeDetails.svelte';
 import { toast } from '../toast';
 import { products, recipes } from '../../test/recipes';
 import type { ImportJob } from '../importApi';
+
 const url = 'https://www.instagram.com/reel/example/';
 const done: ImportJob = {
   id: 'job',
@@ -28,11 +29,7 @@ const done: ImportJob = {
     mime_type: 'video/mp4',
     size_bytes: 19293798,
   },
-  thumbnail: {
-    path: 'tmp/thumb.jpg',
-    mime_type: 'image/jpeg',
-    size_bytes: 500,
-  },
+  thumbnail: null,
 };
 let enabled: boolean;
 let failure: string | null;
@@ -80,7 +77,7 @@ async function finish() {
   await act(() => vi.advanceTimersByTimeAsync(2000));
 }
 
-test('formularz odpytywany co sekundę: blokada zapisu, miniatura, nazwa i przypięcie joba', async () => {
+test('formularz odpytywany co sekundę: blokada zapisu, pusta nazwa bez miniatury i przypięcie joba', async () => {
   const onSave = vi.fn(async () => recipes[0]);
   const view = render(RecipeForm, { onSave });
   await fireEvent.input(screen.getByLabelText('Porcje'), {
@@ -102,17 +99,37 @@ test('formularz odpytywany co sekundę: blokada zapisu, miniatura, nazwa i przyp
   await act(() => vi.advanceTimersByTimeAsync(1000));
   expect(screen.getByText('Wideo zapisane · 18,4 MB')).toBeTruthy();
   expect(screen.getByText('Wykryto: Instagram')).toBeTruthy();
-  expect(screen.getByText('Okładka z wideo · zmień zdjęcie')).toBeTruthy();
-  expect((screen.getByLabelText('Nazwa') as HTMLInputElement).value).toBe(
-    'Z importu',
-  );
+  expect(screen.getByText('Dodaj zdjęcie dania')).toBeTruthy();
+  expect(screen.queryByText('Okładka z wideo · zmień zdjęcie')).toBeNull();
+  expect((screen.getByLabelText('Nazwa') as HTMLInputElement).value).toBe('');
+  expect(
+    (
+      screen.getByRole('button', {
+        name: 'Zapisz przepis',
+      }) as HTMLButtonElement
+    ).disabled,
+  ).toBe(true);
+  await fireEvent.input(screen.getByLabelText('Nazwa'), {
+    target: { value: 'Z importu' },
+  });
+  expect(
+    (
+      screen.getByRole('button', {
+        name: 'Zapisz przepis',
+      }) as HTMLButtonElement
+    ).disabled,
+  ).toBe(false);
   expect(view.container.querySelector('script')).toBeNull();
   expect(view.container.querySelector('img[onerror]')).toBeNull();
   expect(screen.getByText(`Opis z posta: „${done.description}”`)).toBeTruthy();
   await fireEvent.click(screen.getByRole('button', { name: 'Zapisz przepis' }));
   await tick();
   expect(onSave).toHaveBeenCalledWith(
-    expect.objectContaining({ import_job_id: 'job', source_type: 'link' }),
+    expect.objectContaining({
+      import_job_id: 'job',
+      source_type: 'link',
+      title: 'Z importu',
+    }),
   );
 });
 

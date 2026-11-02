@@ -71,7 +71,7 @@ Adresy (URL) ekranów: `/` (przepisy), `/przepis/:id`, `/dodaj`, `/planer`, `/za
 - **Link**: pole „Link do posta lub reela”, notka „Działa tylko z postami publicznymi…”, przycisk „Pobierz wideo i opis”.
   - Rozpoznanie platformy: `instagram.com` → Instagram, `facebook.com` / `fb.watch` → Facebook; inny adres → toast „Wklej link z Instagrama lub Facebooka”.
   - W trakcie: „Pobieram wideo z Instagram…” + nieokreślony pasek postępu.
-  - Po sukcesie: miniatura, „Wideo zapisane · 18,4 MB”, „Wykryto: Instagram”, „Opis z posta: „…””. Tytuł posta (jeśli jest) wstępnie wypełnia pole „Nazwa” tylko gdy jest puste.
+  - Po sukcesie: karta „Wideo zapisane · 18,4 MB”, „Wykryto: Instagram”, „Opis z posta: „…”” (bez miniatury). Pole „Nazwa” pozostaje puste (nie jest wypełniane z posta).
   - Błąd pobrania: komunikat w karcie (p. 8) i przycisk ponowienia; reszta formularza działa, można przełączyć się na „Ręcznie”.
   - Zmiana linku po pobraniu resetuje stan do „Pobierz”.
   - **„Zapisz przepis” jest nieaktywne, dopóki wideo nie zostanie pobrane** (dla zakładki Link).
@@ -84,7 +84,7 @@ Adresy (URL) ekranów: `/` (przepisy), `/przepis/:id`, `/dodaj`, `/planer`, `/za
   - **Składniki** — lista dodanych (nazwa, ilość z jednostką, ✕ usuń) + wyszukiwarka „Dodaj składnik z bazy produktów” (p. 3.6);
   - **Przygotowanie**: textarea „Kolejne kroki, po jednym w linii” — każda niepusta linia = krok;
   - **Wartości na 1 porcję**: kcal, Białko g, Węgle g, Tłuszcz g (opcjonalne, p. 6);
-  - **Zdjęcie dania**: „Dodaj zdjęcie dania” (galeria/aparat na telefonie, plik na laptopie). Po pobraniu wideo: „Okładka z wideo · zmień zdjęcie”.
+  - **Zdjęcie dania**: „Dodaj zdjęcie dania” (galeria/aparat na telefonie, plik na laptopie; import wideo nie pobiera miniatury ani nie ustawia zdjęcia).
 - Przycisk **„Zapisz przepis”**: telefon — przyklejony na dole ekranu; laptop — w nagłówku obok tytułu. Po zapisie: przejście do szczegółów nowego przepisu i toast „Przepis zapisany”.
 - Laptop: dwie kolumny — lewa (źródło + pola), prawa 460 px (składniki).
 
