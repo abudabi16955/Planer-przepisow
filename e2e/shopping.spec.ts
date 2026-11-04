@@ -25,8 +25,9 @@ test('planer → lista zakupów: dni, odhaczanie, trwałość i zmiana planu', a
     await expect(page.getByRole('heading', { name: 'Lista zakupów', exact: true })).toBeVisible();
     await expect(page.getByText(/Pozycje: 2 · Posiłki: 1/)).toBeVisible();
     const eggRow = page.getByRole('button', { name: 'Jajka, 1 szt.', exact: true });
-    const milkRow = page.getByRole('button', { name: 'Mleko 2%, 100 ml', exact: true });
+    const milkRow = page.getByRole('button', { name: 'Mleko 2%, 200 ml', exact: true });
     await expect(eggRow).toBeVisible(); await expect(milkRow).toBeVisible();
+    await expect(page.getByText('Ilości są zsumowane ze wszystkich wybranych posiłków, po całym przepisie każdy. Sztuki zaokrąglone w górę. Ten sam produkt w różnych jednostkach jest w osobnych wierszach.')).toBeVisible();
     const first = await eggRow.boundingBox(); const second = await milkRow.boundingBox();
     if (desktop) expect(second!.x).toBeGreaterThan(first!.x);
     else expect(second!.y).toBeGreaterThan(first!.y);

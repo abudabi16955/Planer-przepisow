@@ -36,8 +36,7 @@ export function shoppingList(
   for (const entry of slots.values()) {
     if (!selected.has(entry.date)) continue;
     const recipe = recipeById.get(entry.recipe_id);
-    if (!recipe || !Number.isFinite(recipe.servings) || recipe.servings <= 0)
-      continue;
+    if (!recipe) continue;
     for (const ingredient of recipe.ingredients) {
       const product = productById.get(ingredient.product_id);
       if (!product) continue;
@@ -50,14 +49,14 @@ export function shoppingList(
       const key = `${product.id}|${taste ? 'do-smaku' : ingredient.unit}`;
       const existing = items.get(key);
       if (existing && !taste) {
-        existing.quantity! += ingredient.quantity! / recipe.servings;
+        existing.quantity! += ingredient.quantity!;
       } else if (!existing) {
         items.set(key, {
           key,
           product_id: product.id,
           name: product.name,
           unit: taste ? '' : ingredient.unit,
-          quantity: taste ? null : ingredient.quantity! / recipe.servings,
+          quantity: taste ? null : ingredient.quantity!,
         });
       }
     }

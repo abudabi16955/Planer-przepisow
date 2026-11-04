@@ -30,7 +30,7 @@ const list = (plan = entries, days = ['2026-12-28'], recipes = [recipe]) =>
   shoppingList(plan, days, recipes, products);
 
 describe('shopping quantities', () => {
-  it('uses one portion per entry and rounds half a piece upward', () => {
+  it('uses whole recipe quantities per entry (1 entry = recipe, 2 entries = 2x)', () => {
     expect(
       list(entries.slice(0, 1)).find((row) => row.unit === 'szt.'),
     ).toEqual({
@@ -42,16 +42,25 @@ describe('shopping quantities', () => {
     });
     expect(
       list(entries.slice(0, 1)).find((row) => row.unit === 'g')?.quantity,
-    ).toBe(50);
+    ).toBe(100);
+    expect(
+      list(entries.slice(0, 1)).find((row) => row.unit === 'kg')?.quantity,
+    ).toBe(1);
+    expect(
+      list(entries.slice(0, 1)).find((row) => row.key === 'b|do-smaku')
+        ?.quantity,
+    ).toBeNull();
   });
   it('counts repeated recipes, filters days and rounds only after aggregation', () => {
-    expect(list().find((row) => row.unit === 'szt.')?.quantity).toBe(1);
+    expect(list().find((row) => row.unit === 'szt.')?.quantity).toBe(2);
     expect(
       list(entries, ['2026-12-28', '2026-12-29']).find(
         (row) => row.unit === 'szt.',
       )?.quantity,
-    ).toBe(2);
-    expect(list().find((row) => row.unit === 'g')?.quantity).toBe(100);
+    ).toBe(3);
+    expect(list().find((row) => row.unit === 'g')?.quantity).toBe(200);
+    expect(list().find((row) => row.unit === 'kg')?.quantity).toBe(2);
+    expect(list().find((row) => row.key === 'b|do-smaku')?.quantity).toBeNull();
   });
   it('keeps different units separate and taste unique per product', () => {
     expect(
@@ -59,8 +68,23 @@ describe('shopping quantities', () => {
         .map((row) => row.key)
         .sort(),
     ).toEqual(['a|g', 'a|kg', 'a|szt.', 'b|do-smaku']);
-    expect(list().find((row) => row.unit === 'kg')?.quantity).toBe(1);
+    expect(list().find((row) => row.unit === 'kg')?.quantity).toBe(2);
     expect(list().find((row) => row.key === 'b|do-smaku')?.quantity).toBeNull();
+  });
+  it('sums fractional pieces across multiple occurrences before rounding up', () => {
+    const half = {
+      ...recipe,
+      ingredients: [{ product_id: 'a', quantity: 0.5, unit: 'szt.' }],
+    };
+    expect(list(entries.slice(0, 1), ['2026-12-28'], [half])[0].quantity).toBe(
+      1,
+    );
+    expect(list(entries.slice(0, 2), ['2026-12-28'], [half])[0].quantity).toBe(
+      1,
+    );
+    expect(
+      list(entries, ['2026-12-28', '2026-12-29'], [half])[0].quantity,
+    ).toBe(2);
   });
   it.each([
     [1.00009, 1],
@@ -92,10 +116,15 @@ describe('shopping quantities', () => {
       ],
     };
     expect(
-      list(entries, ['2026-12-28'], [mixed])
+      list(entries.slice(0, 1), ['2026-12-28'], [mixed])
         .filter((row) => row.product_id === 'b')
         .map((row) => row.quantity),
     ).toEqual([null, 2]);
+    expect(
+      list(entries, ['2026-12-28'], [mixed])
+        .filter((row) => row.product_id === 'b')
+        .map((row) => row.quantity),
+    ).toEqual([null, 4]);
   });
   it('sorts with Polish collation without mutating inputs', () => {
     const names = ['Żyto', 'Łosoś', 'Ziemniaki', 'Cebula', 'Limonka'];

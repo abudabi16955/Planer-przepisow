@@ -63,7 +63,7 @@ afterEach(() => {
 });
 async function show(desktop = false) {
   const view = render(Shopping, { desktop, week: '2026-10-19', now });
-  await screen.findByRole('button', { name: 'Produkt, 50 g' });
+  await screen.findByRole('button', { name: 'Produkt, 100 g' });
   return view;
 }
 
@@ -74,8 +74,13 @@ test.each([false, true])(
     expect(
       screen.getByText('19–25 października · Pozycje: 1 · Posiłki: 1'),
     ).toBeTruthy();
+    expect(
+      screen.getByText(
+        /Ilości są zsumowane ze wszystkich wybranych posiłków, po całym przepisie każdy/,
+      ),
+    ).toBeTruthy();
     expect(screen.getByText('Kupione: 0 z 1')).toBeTruthy();
-    const item = screen.getByRole('button', { name: 'Produkt, 50 g' });
+    const item = screen.getByRole('button', { name: 'Produkt, 100 g' });
     await fireEvent.click(item);
     await waitFor(() => expect(item.getAttribute('aria-pressed')).toBe('true'));
     expect(screen.getByText('Kupione: 1 z 1')).toBeTruthy();
@@ -91,11 +96,11 @@ test.each([false, true])(
     await show(desktop);
     expect(
       screen
-        .getByRole('button', { name: 'Produkt, 50 g' })
+        .getByRole('button', { name: 'Produkt, 100 g' })
         .getAttribute('aria-pressed'),
     ).toBe('true');
     await fireEvent.click(
-      screen.getByRole('button', { name: 'Produkt, 50 g' }),
+      screen.getByRole('button', { name: 'Produkt, 100 g' }),
     );
     await screen.findByText('Kupione: 0 z 1');
   },
@@ -183,7 +188,7 @@ test('zmiana tygodnia resetuje dni i odhaczenia, zachowuje tydzień w powrocie',
 
 test('zniknięte pozycje nie liczą się w postępie po odświeżeniu planu', async () => {
   await show();
-  await fireEvent.click(screen.getByRole('button', { name: 'Produkt, 50 g' }));
+  await fireEvent.click(screen.getByRole('button', { name: 'Produkt, 100 g' }));
   await screen.findByText('Kupione: 1 z 1');
   plan = [];
   await fireEvent(window, new Event('focus'));
@@ -197,11 +202,11 @@ test('zniknięte pozycje nie liczą się w postępie po odświeżeniu planu', as
 test('nieudany zapis zachowuje stan i pozwala spróbować ponownie', async () => {
   await show();
   failWrite = true;
-  await fireEvent.click(screen.getByRole('button', { name: 'Produkt, 50 g' }));
+  await fireEvent.click(screen.getByRole('button', { name: 'Produkt, 100 g' }));
   await screen.findByRole('alert');
   expect(screen.getByText('Kupione: 0 z 1')).toBeTruthy();
   failWrite = false;
-  await fireEvent.click(screen.getByRole('button', { name: 'Produkt, 50 g' }));
+  await fireEvent.click(screen.getByRole('button', { name: 'Produkt, 100 g' }));
   await screen.findByText('Kupione: 1 z 1');
   expect(screen.queryByRole('alert')).toBeNull();
 });
@@ -216,7 +221,7 @@ test('błąd pobierania nie pokazuje fałszywego pustego stanu i ma ponowienie',
   await fireEvent.click(
     screen.getByRole('button', { name: 'Spróbuj ponownie' }),
   );
-  await screen.findByRole('button', { name: 'Produkt, 50 g' });
+  await screen.findByRole('button', { name: 'Produkt, 100 g' });
 });
 
 test('opóźniony zapis starego tygodnia nie odhacza pozycji w nowym tygodniu', async () => {
@@ -235,7 +240,7 @@ test('opóźniony zapis starego tygodnia nie odhacza pozycji w nowym tygodniu', 
       ]);
     return original(input, options);
   });
-  const item = screen.getByRole('button', { name: 'Produkt, 50 g' });
+  const item = screen.getByRole('button', { name: 'Produkt, 100 g' });
   await fireEvent.click(item);
   await fireEvent.click(item);
   expect(
@@ -259,7 +264,7 @@ test('opóźniony zapis starego tygodnia nie odhacza pozycji w nowym tygodniu', 
     expect(
       (
         screen.getByRole('button', {
-          name: 'Produkt, 50 g',
+          name: 'Produkt, 100 g',
         }) as HTMLButtonElement
       ).disabled,
     ).toBe(false),
