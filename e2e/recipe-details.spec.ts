@@ -54,7 +54,7 @@ test('lista → szczegóły z prawdziwym API: skalowanie, odhaczanie i zakładki
       expect(heroScrolled?.y).toBeLessThan(0);
       const plannerBtn = details.getByRole('button', { name: 'Dodaj do planera', exact: true });
       await expect(plannerBtn).toBeVisible();
-      expect(await page.locator('section').evaluate((el) => el.scrollTop)).toBe(0);
+      expect(await page.getByRole('region', { name: 'Przepisy' }).evaluate((el) => el.scrollTop)).toBe(0);
     }
     await details.getByRole('tab', { name: 'Przygotowanie' }).click();
     await expect(details.getByText('Usmaż.', { exact: true })).toBeVisible();
