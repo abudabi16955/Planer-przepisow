@@ -440,6 +440,9 @@
     flex: 1;
     padding: 12px;
     border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
   .tabs [aria-selected='true'] {
     background: white;
@@ -448,6 +451,9 @@
     padding: 12px 18px;
     background: var(--gray);
     border-radius: 999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
   .chips .active {
     background: var(--accent);

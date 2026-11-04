@@ -266,6 +266,9 @@
     height: 44px;
     border-radius: 22px;
     font-size: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
   .back {
     margin-left: -8px;

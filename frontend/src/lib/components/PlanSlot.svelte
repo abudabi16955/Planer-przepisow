@@ -145,6 +145,9 @@
     flex: none;
     font-size: 26px;
     color: var(--muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
   .empty {
     width: 100%;
