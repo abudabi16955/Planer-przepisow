@@ -11,6 +11,11 @@ test.each([
   'https://instagram.com/p/x',
   'https://www.facebook.com/share/x',
   'https://fb.watch/x',
+  'https://www.tiktok.com/@user/video/123',
+  'https://tiktok.com/@user/video/123',
+  'https://m.tiktok.com/v/123',
+  'https://vm.tiktok.com/ZMexample',
+  'https://vt.tiktok.com/ZMexample',
 ])('link społecznościowy %s', (url) =>
   expect(recipeLink(url)?.kind).toBe('social'),
 );
@@ -18,6 +23,7 @@ test.each([
   'https://recipes.example/zupa',
   'http://recipes.example',
   'https://instagram.com.evil.example/x',
+  'https://tiktok.com.evil.example/x',
 ])('strona %s', (url) => expect(recipeLink(url)?.kind).toBe('web'));
 test.each([
   'tekst',
@@ -26,6 +32,7 @@ test.each([
   'https://user:pass@example.com',
   'https://example.com:444/x',
   'http://instagram.com/x',
+  'http://tiktok.com/x',
   'https://exam ple.com',
   'https:example.com',
 ])('błędny adres %s', (url) => expect(recipeLink(url)).toBeNull());

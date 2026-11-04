@@ -6,7 +6,7 @@ export interface ImportJob {
   thumbnail: FileReference | null;
   description: string | null;
   title: string | null;
-  platform: 'instagram' | 'facebook';
+  platform: 'instagram' | 'facebook' | 'tiktok';
   size_bytes: number | null;
   error_code: string | null;
 }
@@ -32,6 +32,16 @@ export function importPlatform(value: string): string | null {
       ].includes(url.hostname)
     )
       return 'Facebook';
+    if (
+      [
+        'tiktok.com',
+        'www.tiktok.com',
+        'm.tiktok.com',
+        'vm.tiktok.com',
+        'vt.tiktok.com',
+      ].includes(url.hostname)
+    )
+      return 'TikTok';
   } catch {
     /* Invalid URL. */
   }

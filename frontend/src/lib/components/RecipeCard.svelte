@@ -28,9 +28,11 @@
           ? 'Instagram'
           : recipe.source_platform === 'facebook'
             ? 'Facebook'
-            : recipe.source_platform === 'www'
-              ? 'WWW'
-              : null
+            : recipe.source_platform === 'tiktok'
+              ? 'TikTok'
+              : recipe.source_platform === 'www'
+                ? 'WWW'
+                : null
         : null,
   );
 </script>

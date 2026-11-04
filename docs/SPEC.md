@@ -14,7 +14,7 @@ Odniesienia do prototypu w formacie `T:<linia>` (telefon) i `L:<linia>`.
 
 Aplikacja webowa (PWA, mobile-first) dla jednego gospodarstwa domowego:
 
-1. zapisywanie przepisów z trzech źródeł: **link** (Instagram/Facebook — pobranie wideo i opisu), **PDF**, **ręcznie**;
+1. zapisywanie przepisów z trzech źródeł: **link** (Instagram/Facebook/TikTok — pobranie wideo i opisu; WWW — pobranie ze schema.org), **PDF**, **ręcznie**;
 2. przeglądanie przepisu: makro na porcję, składniki z przeliczaniem porcji i odhaczaniem, kroki, źródło (wideo / PDF / link);
 3. **planer tygodnia**: 7 dni × 3 posiłki (śniadanie, obiad, kolacja), podsumowanie dnia względem celu dziennego;
 4. **lista zakupów** generowana z planera dla wybranych dni, z odhaczaniem kupionych pozycji;
@@ -41,8 +41,8 @@ Adresy (URL) ekranów: `/` (przepisy), `/przepis/:id`, `/dodaj`, `/planer`, `/za
 ### 3.1 Przepisy (T:35, L:60)
 - Nagłówek „Przepisy”, obok licznik z odmianą: „1 przepis”, „2–4 przepisy” (z wyjątkiem 12–14), „5 przepisów”.
 - Pole „Szukaj przepisu”: filtr po nazwie, bez rozróżniania wielkości liter, dopasowanie fragmentu.
-- Filtry (jeden aktywny): **Wszystkie · Z wideo · Śniadania · Obiady · Kolacje**. „Z wideo” = przepisy ze źródłem Instagram/Facebook.
-- Siatka kart: 2 kolumny (telefon), 3 kolumny (laptop). Karta: zdjęcie/okładka (lub kolorowy placeholder z ikoną talerza), plakietka źródła (Instagram / Facebook / PDF / — dla ręcznych brak plakietki), ikona ▶ gdy jest wideo, tytuł (max 2 linie), linia „330 kcal · 25 min”.
+- Filtry (jeden aktywny): **Wszystkie · Z wideo · Śniadania · Obiady · Kolacje**. „Z wideo” = przepisy ze źródłem Instagram/Facebook/TikTok.
+- Siatka kart: 2 kolumny (telefon), 3 kolumny (laptop). Karta: zdjęcie/okładka (lub kolorowy placeholder z ikoną talerza), plakietka źródła (Instagram / Facebook / TikTok / PDF / WWW / — dla ręcznych brak plakietki), ikona ▶ gdy jest wideo, tytuł (max 2 linie), linia „330 kcal · 25 min”.
 - Kolejność: najnowsze na górze.
 - Brak wyników: „Brak przepisów dla tego filtra.”
 - Pusta baza (brak przepisów) — patrz p. 8.
@@ -50,14 +50,14 @@ Adresy (URL) ekranów: `/` (przepisy), `/przepis/:id`, `/dodaj`, `/planer`, `/za
 
 ### 3.2 Szczegóły przepisu (T:86, L:106)
 - Góra: zdjęcie / okładka wideo / placeholder (telefon 250 px z przyciskiem „Wróć”; laptop 180 px).
-- Plakietki: kategoria, „⏱ 25 min”, „Źródło: Instagram|Facebook|PDF|Ręcznie”.
+- Plakietki: kategoria, „⏱ 25 min”, „Źródło: Instagram|Facebook|TikTok|PDF|WWW|Ręcznie”.
 - Tytuł.
 - Karta makro „na 1 porcję”: duża liczba kcal, pasek proporcji energii (białko #14201A, węglowodany #3F8F68, tłuszcze #A9D1BB), trzy wartości w gramach.
 - Zakładki: **Składniki · Przygotowanie · Źródło**.
   - **Składniki**: licznik „Porcje” − / + w zakresie **1–12** (start = liczba porcji przepisu). Ilości = ilość × porcje / porcje bazowe. Kliknięcie wiersza odhacza składnik (przekreślenie, szary kolor) — stan tylko lokalny, resetuje się przy ponownym otwarciu przepisu. Pod listą tekst pomocniczy z T:175 (tylko telefon).
   - **Przygotowanie**: numerowane karty kroków.
   - **Źródło**:
-    - wideo (Instagram/Facebook): odtwarzacz pionowy 9:16 z przyciskiem ▶/❚❚ i paskiem postępu, „Wideo zapisane w aplikacji · 21,3 MB”; karta „Oryginalny post” (host skrócony, np. `instagram.com/reel/…`, „Zapisano 9 paź 2026”), przycisk „Otwórz oryginał (Instagram)” → prawdziwy URL w nowej karcie; tekst „Kopia wideo jest w aplikacji, więc przepis zostaje…”.
+    - wideo (Instagram/Facebook/TikTok): odtwarzacz pionowy 9:16 z przyciskiem ▶/❚❚ i paskiem postępu, „Wideo zapisane w aplikacji · 21,3 MB”; karta „Oryginalny post” (host skrócony, np. `instagram.com/reel/…`, `tiktok.com/@…`, „Zapisano 9 paź 2026”), przycisk „Otwórz oryginał (Instagram)” / „Otwórz oryginał (TikTok)” → prawdziwy URL w nowej karcie; tekst „Kopia wideo jest w aplikacji, więc przepis zostaje…”.
     - PDF: nazwa pliku, opis „1,2 MB · zapisano 3 paź 2026”, przycisk „Otwórz oryginalny PDF” (otwiera plik w nowej karcie).
     - ręczny: zakładka pokazuje „Własny przepis bez źródła.” (prototyp nie ma tego wariantu — minimalne uzupełnienie).
 - Akcja **„Dodaj do planera”**:
@@ -69,9 +69,9 @@ Adresy (URL) ekranów: `/` (przepisy), `/przepis/:id`, `/dodaj`, `/planer`, `/za
 ### 3.3 Dodaj przepis (T:261, L:425)
 - Zakładki źródła: **Link · PDF · Ręcznie**.
 - **Link**: pole „Link do posta lub reela”, notka „Działa tylko z postami publicznymi…”, przycisk „Pobierz wideo i opis”.
-  - Rozpoznanie platformy: `instagram.com` → Instagram, `facebook.com` / `fb.watch` → Facebook; inny adres → toast „Wklej link z Instagrama lub Facebooka”.
-  - W trakcie: „Pobieram wideo z Instagram…” + nieokreślony pasek postępu.
-  - Po sukcesie: karta „Wideo zapisane · 18,4 MB”, „Wykryto: Instagram”, „Opis z posta: „…”” (bez miniatury). Pole „Nazwa” pozostaje puste (nie jest wypełniane z posta).
+  - Rozpoznanie platformy: `instagram.com` → Instagram, `facebook.com` / `fb.watch` → Facebook, `tiktok.com` / `vm.tiktok.com` / `vt.tiktok.com` → TikTok; inne adresy HTTP(S) obsługuje import WWW (p. 10).
+  - W trakcie: „Pobieram wideo z Instagram…” / „Pobieram wideo z TikTok…” + nieokreślony pasek postępu.
+  - Po sukcesie: karta „Wideo zapisane · 18,4 MB”, „Wykryto: Instagram” / „Wykryto: TikTok”, „Opis z posta: „…”” (bez miniatury). Pole „Nazwa” pozostaje puste (nie jest wypełniane z posta).
   - Błąd pobrania: komunikat w karcie (p. 8) i przycisk ponowienia; reszta formularza działa, można przełączyć się na „Ręcznie”.
   - Zmiana linku po pobraniu resetuje stan do „Pobierz”.
   - **„Zapisz przepis” jest nieaktywne, dopóki wideo nie zostanie pobrane** (dla zakładki Link).
@@ -142,7 +142,7 @@ Adresy (URL) ekranów: `/` (przepisy), `/przepis/:id`, `/dodaj`, `/planer`, `/za
 Startowa baza: 29 produktów z `catalog()` prototypu (T:889) + wartości odżywcze z publicznych tabel (do przygotowania przez Researchera, zatwierdzane przeze mnie).
 
 ### 5.2 Przepis
-`id`, `title`, `category` (sniadanie | obiad | kolacja), `time_min`, `servings` (porcje bazowe, 1–50; licznik w szczegółach ma zakres 1–12), `source_type` (link | pdf | manual), `source_platform` (instagram | facebook | null), `source_url`, `source_description` (opis posta — tekst, traktowany jak dane), `video` / `pdf` / `photo` (odnośniki do plików: ścieżka względna, rozmiar, nazwa oryginalna, typ MIME), `kcal`, `protein`, `carbs`, `fat` (na 1 porcję, ręczne, opcjonalne), `steps[]` (lista tekstów), `created_at`, `updated_at`.
+`id`, `title`, `category` (sniadanie | obiad | kolacja), `time_min`, `servings` (porcje bazowe, 1–50; licznik w szczegółach ma zakres 1–12), `source_type` (link | pdf | manual), `source_platform` (instagram | facebook | tiktok | www | null), `source_url`, `source_description` (opis posta — tekst, traktowany jak dane), `video` / `pdf` / `photo` (odnośniki do plików: ścieżka względna, rozmiar, nazwa oryginalna, typ MIME), `kcal`, `protein`, `carbs`, `fat` (na 1 porcję, ręczne, opcjonalne), `steps[]` (lista tekstów), `created_at`, `updated_at`.
 
 ### 5.3 Składnik przepisu
 `recipe_id`, `position`, `product_id`, `quantity` (liczba > 0 albo null = „do smaku”), `unit` (jedna z jednostek produktu albo pusta dla „do smaku”).
@@ -157,7 +157,7 @@ Jeden rekord: `kcal`, `protein`, `carbs`, `fat` (liczby ≥ 0; 0 = brak celu).
 `week_start` (poniedziałek), `item_key` (`product_id|unit` albo `product_id|do-smaku`), `checked`.
 
 ### 5.7 Zadanie importu
-`id`, `url`, `platform`, `status` (queued | running | done | failed), `error_code`, `video`, `thumbnail`, `description`, `title`, `size_bytes`, `created_at`. Wynik zadania jest „przypinany” do przepisu przy zapisie; nieużyte zadania i pliki sprzątane po 24 h.
+`id`, `url`, `platform` (instagram | facebook | tiktok), `status` (queued | running | done | failed), `error_code`, `video`, `thumbnail`, `description`, `title`, `size_bytes`, `created_at`. Wynik zadania jest „przypinany” do przepisu przy zapisie; nieużyte zadania i pliki sprzątane po 24 h.
 
 ## 6. Reguły obliczeń
 
@@ -188,7 +188,7 @@ Jeden rekord: `kcal`, `protein`, `carbs`, `fat` (liczby ≥ 0; 0 = brak celu).
 |---|---|
 | Pusta baza przepisów | Ekran Przepisy: „0 przepisów” i pusta karta „Brak przepisów dla tego filtra.” (tekst prototypu); wybór przepisu w planerze — pusta lista z tym samym komunikatem. |
 | Pusty plan | Przycisk „Lista zakupów” nieaktywny, podtytuł „Najpierw zaplanuj posiłki”; lista zakupów — komunikat pustego stanu. |
-| Link nie z Instagrama/Facebooka | Toast „Wklej link z Instagrama lub Facebooka”, brak żądania do serwera. |
+| Link nieobsługiwany przez import wideo/WWW | Toast „Wklej poprawny link do przepisu”, brak żądania do serwera. |
 | Post prywatny / usunięty / wymaga logowania | Karta błędu: „Nie udało się pobrać wideo. Post może być prywatny lub usunięty.” + „Spróbuj ponownie”. Nie przekazujemy żadnych ciasteczek ani loginów do yt-dlp. |
 | Import niedostępny (brak yt-dlp / wyłączony) | Zakładka Link pokazuje „Pobieranie z linku jest chwilowo niedostępne.”; PDF i Ręcznie działają. |
 | Wideo przekracza limit | Błąd „Wideo jest za duże (limit 300 MB).” |
@@ -264,9 +264,9 @@ Wyłączenie modułu daje HTTP 503; pozostałe funkcje aplikacji nadal działaj�
 
 ### 10.1. Zakładka Link i przegląd składników WWW
 
-Linki IG/FB zachowują import wideo. Pozostałe poprawne adresy HTTP(S) używają
+Linki IG/FB/TikTok zachowują import wideo. Pozostałe poprawne adresy HTTP(S) używają
 `POST /api/web-import`; błędny tekst daje toast „Wklej poprawny link do przepisu”.
-Notka: „Instagram, Facebook (posty publiczne) lub strona z przepisem”. Przycisk
+Notka: „Instagram, Facebook, TikTok (posty publiczne) lub strona z przepisem”. Przycisk
 „Pobierz przepis ze strony”, postęp „Pobieram przepis z {host}…”. Flaga
 `web_import_enabled: false` ukrywa przycisk WWW i pokazuje „Pobieranie ze stron
 jest chwilowo niedostępne.”, bez blokowania pozostałych sposobów dodawania.

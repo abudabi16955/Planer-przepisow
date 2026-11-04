@@ -50,6 +50,11 @@ export function recipeLink(
       'www.facebook.com',
       'm.facebook.com',
       'fb.watch',
+      'tiktok.com',
+      'www.tiktok.com',
+      'm.tiktok.com',
+      'vm.tiktok.com',
+      'vt.tiktok.com',
     ].includes(url.hostname);
     if (social && !importPlatform(value)) return null;
     return { kind: social ? 'social' : 'web', host: url.hostname };

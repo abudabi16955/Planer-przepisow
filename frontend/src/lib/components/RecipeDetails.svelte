@@ -109,7 +109,9 @@
           ? 'WWW'
           : recipe.source_platform === 'facebook'
             ? 'Facebook'
-            : 'Instagram',
+            : recipe.source_platform === 'tiktok'
+              ? 'TikTok'
+              : 'Instagram',
   );
   const ingredients = $derived(
     recipe.ingredients.map((ingredient, index) => ({
@@ -139,6 +141,11 @@
         'www.facebook.com',
         'm.facebook.com',
         'fb.watch',
+        'tiktok.com',
+        'www.tiktok.com',
+        'm.tiktok.com',
+        'vm.tiktok.com',
+        'vt.tiktok.com',
       ];
       return (recipe.source_platform === 'www'
         ? ['https:', 'http:'].includes(url.protocol) &&

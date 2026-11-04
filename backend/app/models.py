@@ -100,7 +100,7 @@ class RecipeCreate(BaseModel):
     time_min: Annotated[int, Field(gt=0, strict=True)] | None = None
     servings: Annotated[int, Field(ge=1, le=50, strict=True)]
     source_type: Literal["manual", "pdf", "link"] = "manual"
-    source_platform: Literal["instagram", "facebook", "www"] | None = None
+    source_platform: Literal["instagram", "facebook", "www", "tiktok"] | None = None
     source_url: str | None = None
     source_description: str | None = None
     kcal: NutritionValue | None = None

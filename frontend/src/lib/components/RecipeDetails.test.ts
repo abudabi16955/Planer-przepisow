@@ -199,6 +199,26 @@ test('opis posta pozostaje tekstem, wideo i oryginał mają właściwe adresy', 
   expect(screen.getByText('Wideo zapisane w aplikacji · 21,3 MB')).toBeTruthy();
 });
 
+test('źródło TikTok pokazuje właściwą plakietkę i link Otwórz oryginał (TikTok)', async () => {
+  const tiktokUrl =
+    'https://www.tiktok.com/@wierzbicka_kinga/video/7660149528980360480';
+  show({
+    ...detailRecipe,
+    source_type: 'link',
+    source_platform: 'tiktok',
+    source_url: tiktokUrl,
+    video: {
+      path: 'videos/tiktok.mp4',
+      mime_type: 'video/mp4',
+      size_bytes: 5956787,
+    },
+  });
+  expect(screen.getByText('Źródło: TikTok')).toBeTruthy();
+  await fireEvent.click(screen.getByRole('tab', { name: 'Źródło' }));
+  const link = screen.getByRole('link', { name: 'Otwórz oryginał (TikTok)' });
+  expect(link.getAttribute('href')).toBe(tiktokUrl);
+});
+
 test('nie tworzy linku do niebezpiecznego URL', async () => {
   show({
     ...detailRecipe,

@@ -154,6 +154,34 @@ test('kcal pochodzą z domeny, brak wartości nie pokazuje kcal, ręczny nie ma 
   ).toBeNull();
 });
 
+test('przepis z TikToka ma plakietkę TikTok i kwalifikuje się do filtra Z wideo', async () => {
+  const tiktokRecipe = {
+    ...recipes[1],
+    id: 'tiktok_recipe',
+    title: 'Makaron z TikToka',
+    source_platform: 'tiktok' as const,
+  };
+  vi.mocked(fetch).mockImplementation(
+    async (url: RequestInfo | URL) =>
+      new Response(
+        JSON.stringify(
+          url === '/api/recipes' ? [...recipes, tiktokRecipe] : products,
+        ),
+        { status: 200 },
+      ),
+  );
+  await load();
+  const card = screen.getByRole('button', {
+    name: 'Otwórz przepis: Makaron z TikToka',
+  });
+  expect(within(card).getByText('TikTok')).toBeTruthy();
+  expect(within(card).getByLabelText('Z wideo')).toBeTruthy();
+  await fireEvent.click(screen.getByRole('button', { name: 'Z wideo' }));
+  expect(
+    screen.getByRole('button', { name: 'Otwórz przepis: Makaron z TikToka' }),
+  ).toBeTruthy();
+});
+
 test('na telefonie karta otwiera trasę szczegółów', async () => {
   await load();
   expect(screen.queryByRole('complementary')).toBeNull();

@@ -37,7 +37,8 @@
             (filter === 'video'
               ? recipe.source_type === 'link' &&
                 (recipe.source_platform === 'instagram' ||
-                  recipe.source_platform === 'facebook')
+                  recipe.source_platform === 'facebook' ||
+                  recipe.source_platform === 'tiktok')
               : recipe.category === filter)),
       )
       .sort(
