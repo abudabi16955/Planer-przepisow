@@ -97,7 +97,7 @@ Adresy (URL) ekranów: `/` (przepisy), `/przepis/:id`, `/dodaj`, `/planer`, `/za
   - karta podsumowania dnia (p. 3.4.1);
   - 3 sloty: wypełniony (miniatura, tytuł, „330 kcal · 25 min”, ✕ „Usuń z planera”) lub pusty („+ Dodaj przepis”).
 - **Laptop**: tablica 7 kolumn × 3 kafle (148 px); kafel wypełniony w kolorze przepisu (nazwa posiłku, tytuł do 3 linii, kcal, ✕); pusty — przerywana ramka z „+ Śniadanie”. Klik nagłówka dnia wybiera dzień do podsumowania. Prawy panel 320 px „Podsumowanie dnia”. Przycisk „Lista zakupów” w nagłówku. Klik w kafel otwiera przepis (widok Przepisy z panelem).
-- Pusty slot → wybór przepisu: arkusz (telefon) / okno modalne 2-kolumnowe (laptop) „Wybierz przepis”, podtytuł „Środa · Obiad”, lista wszystkich przepisów. Wybór → toast „Dodano do planera: <tytuł>”.
+- Pusty slot → wybór przepisu: arkusz (telefon) / okno modalne 2-kolumnowe (laptop) „Wybierz przepis”, podtytuł „Środa · Obiad”, lista wszystkich przepisów (każdy element zawiera miniaturę, tytuł oraz wiersz metadanych: „<kcal> · <czas> · <liczba> porcji” z polską odmianą słowa „porcja”, pomijając brakujące wartości). Wybór → toast „Dodano do planera: <tytuł>”.
 - Jeden przepis na slot. Ten sam przepis może być w wielu slotach.
 
 #### 3.4.1 Podsumowanie dnia i cel dzienny

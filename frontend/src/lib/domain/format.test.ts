@@ -6,6 +6,7 @@ import {
   formatNumber,
   formatQuantity,
   formatRecipeCount,
+  formatServings,
 } from './format';
 
 test.each([
@@ -81,6 +82,20 @@ test.each([
   [112, '112 przepisów'],
 ])('licznik przepisów: %s', (value, expected) =>
   expect(formatRecipeCount(value)).toBe(expected),
+);
+
+test.each([
+  [1, '1 porcja'],
+  [2, '2 porcje'],
+  [4, '4 porcje'],
+  [5, '5 porcji'],
+  [12, '12 porcji'],
+  [14, '14 porcji'],
+  [21, '21 porcji'],
+  [22, '22 porcje'],
+  [50, '50 porcji'],
+])('licznik porcji: %s -> %s', (value, expected) =>
+  expect(formatServings(value)).toBe(expected),
 );
 
 test.each([

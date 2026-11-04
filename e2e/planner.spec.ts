@@ -30,6 +30,7 @@ test('planer: dodawanie, zastępowanie, trwałość, zakupy, szczegóły i usuwa
     await target.getByRole('button',{name:'Dodaj przepis: Obiad',exact:true}).click();
     const picker=page.getByRole('dialog',{name:'Wybierz przepis'});
     await expect(picker.getByText('Wtorek · Obiad')).toBeVisible();
+    await expect(picker.getByText('330 kcal · 25 min · 2 porcje')).toBeVisible();
     const choices=picker.getByRole('button',{name:/^Wybierz:/});
     const first=await choices.nth(0).boundingBox();
     const second=await choices.nth(1).boundingBox();
