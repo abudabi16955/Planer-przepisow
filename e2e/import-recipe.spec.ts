@@ -54,7 +54,7 @@ test('Link → import fake TikTok → zapis → badge TikTok i link Otwórz oryg
     await page.getByLabel('Link do posta lub reela', { exact: true }).fill('https://www.tiktok.com/@user/video/1234567890');
     await page.getByRole('button', { name: 'Pobierz wideo i opis', exact: true }).click();
     await expect(page.getByText(/Wideo zapisane ·/)).toBeVisible();
-    await expect(page.getByText('Wykryto: TikTok', exact: true)).toBeVisible();
+    await expect(page.getByText('Wykryto: TikTok', { exact: true })).toBeVisible();
     await page.getByLabel('Nazwa', { exact: true }).fill(title);
     const created = page.waitForResponse(response => response.url().endsWith('/api/recipes') && response.request().method() === 'POST');
     await save.click();
