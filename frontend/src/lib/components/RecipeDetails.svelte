@@ -545,15 +545,13 @@
   article.desktop {
     display: flex;
     flex-direction: column;
-    height: 100dvh;
+    min-height: 100%;
   }
   .desktop .hero {
     flex: none;
   }
   .desktop .body {
     flex: 1;
-    min-height: 0;
-    overflow-y: auto;
   }
 
   .confirm-overlay {
@@ -970,7 +968,7 @@
   }
   .desktop .body {
     margin-top: -24px;
-    padding: 20px 24px 24px;
+    padding: 20px 24px 32px;
     border-radius: 24px 24px 0 0;
   }
   .desktop .kcal {

@@ -50,6 +50,7 @@ Adresy (URL) ekranów: `/` (przepisy), `/przepis/:id`, `/dodaj`, `/planer`, `/za
 
 ### 3.2 Szczegóły przepisu (T:86, L:106)
 - Góra: zdjęcie / okładka wideo / placeholder (telefon 250 px z przyciskiem „Wróć”; laptop 204 px; na obu szerokościach karta treści nachodzi na pas o 24 px z zaokrąglonymi górnymi rogami 24 px, widoczna wysokość pasa na laptopie: 180 px).
+- Przewijanie na laptopie: cały panel szczegółów przewija się w całości (zdjęcie/placeholder odjeżdża w górę razem z tytułem i treścią, tak jak na telefonie). Pasek „Dodaj do planera” pozostaje cały czas widoczny na dole panelu (przyklejony do dolnej krawędzi), z zachowaniem bezpiecznego odstępu na dole treści, by nie zasłaniać ostatnich składników ani kroków. Lista przepisów obok nie przewija się razem z panelem (brak podwójnego paska przewijania).
 - Plakietki: kategoria, „⏱ 25 min”, „Źródło: Instagram|Facebook|TikTok|PDF|WWW|Ręcznie”.
 - Tytuł.
 - Karta makro „na 1 porcję”: duża liczba kcal, pasek proporcji energii (białko #14201A, węglowodany #3F8F68, tłuszcze #A9D1BB), trzy wartości w gramach.

@@ -279,6 +279,7 @@
     width: 480px;
     height: 100dvh;
     overflow-y: auto;
+    scroll-padding-bottom: 96px;
     border-left: 1px solid var(--border);
     background: var(--background);
   }
