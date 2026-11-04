@@ -223,6 +223,9 @@
     width: 100%;
     height: 52px;
     margin-top: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     border-radius: 16px;
     background: var(--accent);
     color: white;
@@ -282,6 +285,9 @@
     width: 44px;
     height: 44px;
     font-size: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
   [role='alert'] {
     color: var(--warning) !important;

@@ -16,7 +16,7 @@ test('zmiana celu na telefonie 390×844 i laptopie 1440×900',async({page,reques
         await editor.getByLabel(label,{exact:true}).fill(value);
         expect((await response).status()).toBe(200);
       }
-      if(desktop)await summary.getByRole('button',{name:'Ukryj edycję celu'}).click();else await editor.getByRole('button',{name:'Gotowe'}).click();
+      if(desktop){await summary.getByRole('button',{name:'Ukryj edycję celu'}).click();}else{const doneBtn=editor.getByRole('button',{name:'Gotowe'});await expect(doneBtn).toHaveCSS('justify-content','center');await expect(doneBtn).toHaveCSS('align-items','center');await doneBtn.click();}
       await expect(summary.getByRole('group',{name:'Tłuszcze',exact:true}).getByText(desktop?'70 g':'brak celu',{exact:true})).toBeVisible();
       expect(await(await request.get('/api/goal')).json()).toEqual({kcal:desktop?2100:1800,protein:desktop?130:120,carbs:desktop?260:240,fat:desktop?70:0});
       await page.reload();
