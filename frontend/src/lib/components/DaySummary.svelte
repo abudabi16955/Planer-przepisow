@@ -352,6 +352,9 @@
     height: 44px;
     flex: none;
     font-size: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
   .sheet > p {
     margin: 4px 0 0;
@@ -362,6 +365,9 @@
     width: 100%;
     height: 52px;
     margin-top: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     border-radius: 16px;
     background: var(--accent);
     color: white;

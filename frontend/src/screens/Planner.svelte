@@ -298,6 +298,9 @@
     border-radius: 12px;
     background: var(--white);
     font-size: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
   .board {
     display: grid;

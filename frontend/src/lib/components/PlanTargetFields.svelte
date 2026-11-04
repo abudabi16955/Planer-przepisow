@@ -77,6 +77,9 @@
   .slots button {
     height: 48px;
     font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
   button {
     border: 1px solid rgba(20, 32, 26, 0.12);

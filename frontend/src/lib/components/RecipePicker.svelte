@@ -146,6 +146,9 @@
     width: 44px;
     height: 44px;
     font-size: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
   .note {
     margin: 12px 0 4px;
