@@ -10,7 +10,12 @@
   import { showToast } from '../toast';
   import { formatDate, formatFileSize, formatNumber } from '../domain/format';
   import { recipeNutrition, energyProportions } from '../domain/nutrition';
-  import { clampServings, formatScaledQuantity } from '../domain/scale';
+  import {
+    clampServings,
+    formatScaledQuantity,
+    MAX_SERVINGS,
+    MIN_SERVINGS,
+  } from '../domain/scale';
   import { paletteForRecipe } from '../recipeCards';
   import { navigate } from '../router';
   import AddToPlanner from './AddToPlanner.svelte';
@@ -338,7 +343,7 @@
           <div>
             <button
               aria-label="Mniej porcji"
-              disabled={servings === 1}
+              disabled={servings === MIN_SERVINGS}
               onclick={() => {
                 servings = clampServings(servings - 1);
               }}
@@ -358,7 +363,7 @@
             >
             <button
               aria-label="Więcej porcji"
-              disabled={servings === 12}
+              disabled={servings === MAX_SERVINGS}
               onclick={() => {
                 servings = clampServings(servings + 1);
               }}><Icon kind="add" size={20} /></button

@@ -54,7 +54,7 @@ Adresy (URL) ekranów: `/` (przepisy), `/przepis/:id`, `/dodaj`, `/planer`, `/za
 - Tytuł.
 - Karta makro „na 1 porcję”: duża liczba kcal, pasek proporcji energii (białko #14201A, węglowodany #3F8F68, tłuszcze #A9D1BB), trzy wartości w gramach.
 - Zakładki: **Składniki · Przygotowanie · Źródło**.
-  - **Składniki**: licznik „Porcje” − / + w zakresie **1–12** (start = liczba porcji przepisu). Ilości = ilość × porcje / porcje bazowe. Kliknięcie wiersza odhacza składnik (przekreślenie, szary kolor) — stan tylko lokalny, resetuje się przy ponownym otwarciu przepisu. Pod listą tekst pomocniczy z T:175 (tylko telefon).
+  - **Składniki**: licznik „Porcje” − / + w zakresie **1–50** (start = liczba porcji przepisu). Ilości = ilość × porcje / porcje bazowe. Kliknięcie wiersza odhacza składnik (przekreślenie, szary kolor) — stan tylko lokalny, resetuje się przy ponownym otwarciu przepisu. Pod listą tekst pomocniczy z T:175 (tylko telefon).
   - **Przygotowanie**: numerowane karty kroków.
   - **Źródło**:
     - wideo (Instagram/Facebook/TikTok): odtwarzacz pionowy 9:16 z przyciskiem ▶/❚❚ i paskiem postępu, „Wideo zapisane w aplikacji · 21,3 MB”; karta „Oryginalny post” (host skrócony, np. `instagram.com/reel/…`, `tiktok.com/@…`, „Zapisano 9 paź 2026”), przycisk „Otwórz oryginał (Instagram)” / „Otwórz oryginał (TikTok)” → prawdziwy URL w nowej karcie; tekst „Kopia wideo jest w aplikacji, więc przepis zostaje…”.
@@ -142,7 +142,7 @@ Adresy (URL) ekranów: `/` (przepisy), `/przepis/:id`, `/dodaj`, `/planer`, `/za
 Startowa baza: 29 produktów z `catalog()` prototypu (T:889) + wartości odżywcze z publicznych tabel (do przygotowania przez Researchera, zatwierdzane przeze mnie).
 
 ### 5.2 Przepis
-`id`, `title`, `category` (sniadanie | obiad | kolacja), `time_min`, `servings` (porcje bazowe, 1–50; licznik w szczegółach ma zakres 1–12), `source_type` (link | pdf | manual), `source_platform` (instagram | facebook | tiktok | www | null), `source_url`, `source_description` (opis posta — tekst, traktowany jak dane), `video` / `pdf` / `photo` (odnośniki do plików: ścieżka względna, rozmiar, nazwa oryginalna, typ MIME), `kcal`, `protein`, `carbs`, `fat` (na 1 porcję, ręczne, opcjonalne), `steps[]` (lista tekstów), `created_at`, `updated_at`.
+`id`, `title`, `category` (sniadanie | obiad | kolacja), `time_min`, `servings` (porcje bazowe, 1–50; licznik w szczegółach ma zakres 1–50), `source_type` (link | pdf | manual), `source_platform` (instagram | facebook | tiktok | www | null), `source_url`, `source_description` (opis posta — tekst, traktowany jak dane), `video` / `pdf` / `photo` (odnośniki do plików: ścieżka względna, rozmiar, nazwa oryginalna, typ MIME), `kcal`, `protein`, `carbs`, `fat` (na 1 porcję, ręczne, opcjonalne), `steps[]` (lista tekstów), `created_at`, `updated_at`.
 
 ### 5.3 Składnik przepisu
 `recipe_id`, `position`, `product_id`, `quantity` (liczba > 0 albo null = „do smaku”), `unit` (jedna z jednostek produktu albo pusta dla „do smaku”).
@@ -166,7 +166,7 @@ Jeden rekord: `kcal`, `protein`, `carbs`, `fat` (liczby ≥ 0; 0 = brak celu).
    b) jeśli nic nie wpisał — liczymy z produktów: Σ(wartość produktu × ilość w podstawie) / porcje. Przeliczenia na podstawę, w kolejności: (1) jednostka = jednostka podstawy; (2) g←kg, ml←l (×1000); (3) `unit_conversions` produktu; (4) dla produktów „na 100 ml” standardowe miary: łyżka = 15 ml, łyżeczka = 5 ml, szklanka = 250 ml. Składnik w jednostce bez przelicznika, „do smaku” lub produkt bez wartości — pomijany;
    c) brak jakichkolwiek danych → przepis „bez wartości” (wyświetlamy „—” zamiast kcal, pasek makro pusty, w linii karty tylko „25 min”).
 2. **Proporcje energii**: B% = round(4B/E·100), W% = round(4W/E·100), T% = 100 − B% − W%, gdzie E = 4B + 4W + 9T.
-3. **Skalowanie porcji**: ilość × porcje / porcje bazowe; zakres licznika 1–12.
+3. **Skalowanie porcji**: ilość × porcje / porcje bazowe; zakres licznika 1–50.
 4. **Lista zakupów**: dla każdego wpisu planera w wybranych dniach i każdego składnika: ilość / porcje bazowe (czyli 1 porcja na posiłek). Grupowanie po (produkt, jednostka); bez przeliczania jednostek. „szt.” → zaokrąglenie w górę (z tolerancją 0,0001); pozostałe wg p. 4. „Do smaku” — jeden wiersz na produkt z ilością „do smaku”. Sortowanie alfabetyczne wg polskiej kolacji.
 5. **Licznik posiłków**: „X z 21 posiłków” = liczba zajętych slotów w tygodniu.
 6. **Dziś** i **tydzień** liczone w strefie czasowej aplikacji (domyślnie Europe/Warsaw); tydzień = poniedziałek–niedziela.
