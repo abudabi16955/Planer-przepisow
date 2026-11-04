@@ -52,6 +52,11 @@ jobs:
     needs: frontend
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # obraz z przeglądarkami i bibliotekami systemowymi: bez apt i install-deps (wolny mirror)
+    # wersja obrazu musi być zgodna z @playwright/test w frontend/package-lock.json
+    container:
+      image: mcr.microsoft.com/playwright:v1.64.1-noble
+      options: --ipc=host
     services:
       postgres:
         image: postgres:18
@@ -59,12 +64,11 @@ jobs:
           POSTGRES_USER: planer
           POSTGRES_DB: planer
           POSTGRES_HOST_AUTH_METHOD: trust
-        ports: ['5432:5432']
         options: >-
           --health-cmd "pg_isready -U planer -d planer"
           --health-interval 5s --health-timeout 5s --health-retries 10
     env:
-      DATABASE_URL: postgresql://planer@localhost:5432/planer
+      DATABASE_URL: postgresql://planer@postgres:5432/planer
       DATA_DIR: ./data
       IMPORT_BACKEND: fake
     steps:
@@ -81,41 +85,12 @@ jobs:
       - run: backend/.venv/bin/pip install ./backend
       - run: npm --prefix frontend ci
       - run: npm --prefix frontend run build
-      - name: Wersja Playwrighta
-        id: pw
-        run: echo "version=$(node -p "require('./frontend/package-lock.json').packages['node_modules/@playwright/test'].version")" >> "$GITHUB_OUTPUT"
-      - name: Cache przeglądarek Playwrighta
-        id: pw-cache
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
-      - name: Zainstaluj przeglądarkę Playwrighta (z ponowieniami)
-        timeout-minutes: 15
-        working-directory: frontend
-        env:
-          CACHE_HIT: ${{ steps.pw-cache.outputs.cache-hit }}
+      - name: Wersja obrazu zgodna z Playwrightem
         run: |
-          # wolne lub zawieszone pobierania z mirrora apt: krótki timeout i ponowienia po stronie apt
-          printf 'Acquire::Retries "5";\nAcquire::http::Timeout "20";\nAcquire::https::Timeout "20";\n' \
-            | sudo tee /etc/apt/apt.conf.d/99-ci-retries > /dev/null
-          if [ "$CACHE_HIT" = "true" ]; then
-            args="install-deps chromium"
-          else
-            args="install --with-deps chromium"
-          fi
-          for attempt in 1 2 3; do
-            if timeout --kill-after=10s 5m npx playwright $args; then
-              exit 0
-            fi
-            echo "Próba $attempt nieudana lub przekroczono 5 min" >&2
-            # po ubitej próbie apt może nadal trzymać blokadę dpkg
-            sudo pkill -x apt-get || true
-            sudo pkill -x dpkg || true
-            sleep 3
-            sudo dpkg --configure -a || true
-          done
-          exit 1
+          v=$(node -p "require('./frontend/package-lock.json').packages['node_modules/@playwright/test'].version")
+          test "$v" = "$PLAYWRIGHT_VERSION" || { echo "Zmień obraz kontenera e2e na v$v-noble" >&2; exit 1; }
+        env:
+          PLAYWRIGHT_VERSION: 1.64.1
       - run: npm --prefix frontend run test:e2e
   docker:
     runs-on: ubuntu-latest
