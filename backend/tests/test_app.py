@@ -43,6 +43,7 @@ def test_migrations_from_empty_and_idempotent(clean_database):
                 ("002_schema.sql",),
                 ("003_seed_products.sql",),
                 ("004_web_source.sql",),
+                ("005_tiktok_source.sql",),
             ]
 
 

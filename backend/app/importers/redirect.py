@@ -1,4 +1,4 @@
-"""Resolve Facebook short links in a bounded subprocess, checking every redirect."""
+"""Resolve Facebook and TikTok short links in a bounded subprocess, checking every redirect."""
 
 import json
 import sys

@@ -4,7 +4,7 @@ from typing import Literal, Protocol
 from urllib.parse import urlsplit
 
 ErrorCode = Literal["private_or_missing", "too_large", "timeout", "unsupported_url", "unavailable"]
-Platform = Literal["instagram", "facebook"]
+Platform = Literal["instagram", "facebook", "tiktok"]
 HOSTS: dict[str, Platform] = {
     "instagram.com": "instagram",
     "www.instagram.com": "instagram",
@@ -12,6 +12,11 @@ HOSTS: dict[str, Platform] = {
     "www.facebook.com": "facebook",
     "m.facebook.com": "facebook",
     "fb.watch": "facebook",
+    "tiktok.com": "tiktok",
+    "www.tiktok.com": "tiktok",
+    "m.tiktok.com": "tiktok",
+    "vm.tiktok.com": "tiktok",
+    "vt.tiktok.com": "tiktok",
 }
 
 

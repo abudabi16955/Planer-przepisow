@@ -175,7 +175,7 @@
     /></label
   >
   <p class="note">
-    Instagram, Facebook (posty publiczne) lub strona z przepisem
+    Instagram, Facebook, TikTok (posty publiczne) lub strona z przepisem
   </p>
   {#if enabled === false && !existing && !isWeb}<p>
       Pobieranie z linku jest chwilowo niedostępne.
@@ -212,7 +212,9 @@
           Wykryto: {job
             ? job.platform === 'instagram'
               ? 'Instagram'
-              : 'Facebook'
+              : job.platform === 'tiktok'
+                ? 'TikTok'
+                : 'Facebook'
             : platform}
         </p>
         {#if job?.description}<p class="description">

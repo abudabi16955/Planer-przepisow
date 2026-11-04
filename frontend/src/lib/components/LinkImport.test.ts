@@ -165,6 +165,9 @@ test.each([
   'javascript:alert(1)',
   'https://user@instagram.com/p/x',
   'https://facebook.com:444/x',
+  'http://tiktok.com/video/x',
+  'https://user@tiktok.com/video/x',
+  'https://tiktok.com:444/x',
 ])('zły link %s: toast bez POST', async (value) => {
   render(LinkImport, { onchange: vi.fn() });
   await screen.findByRole('button', { name: 'Pobierz wideo i opis' });
@@ -307,4 +310,35 @@ test('błąd sieci pozwala ponowić pobieranie', async () => {
   );
   await finish();
   expect(screen.getByText('Wideo zapisane · 18,4 MB')).toBeTruthy();
+});
+
+test('pobieranie z TikToka: komunikat i wykryta platforma TikTok', async () => {
+  const tiktokUrl = 'https://www.tiktok.com/@user/video/123';
+  const tiktokDone: ImportJob = {
+    ...done,
+    platform: 'tiktok',
+  };
+  vi.mocked(fetch).mockImplementation(async (input: RequestInfo | URL) => {
+    if (input === '/api/config')
+      return Response.json({ import_enabled: true, max_video_mb: 42 });
+    if (input === '/api/imports')
+      return Response.json({ ...tiktokDone, status: 'queued', video: null });
+    if (input === '/api/imports/job') return Response.json(tiktokDone);
+    throw new Error(`Unexpected request: ${input}`);
+  });
+  render(LinkImport, { onchange: vi.fn() });
+  await screen.findByRole('button', { name: 'Pobierz wideo i opis' });
+  expect(
+    screen.getByText(/Instagram, Facebook, TikTok \(posty publiczne\)/),
+  ).toBeTruthy();
+  await fireEvent.input(screen.getByLabelText('Link do posta lub reela'), {
+    target: { value: tiktokUrl },
+  });
+  vi.useFakeTimers();
+  await fireEvent.click(
+    screen.getByRole('button', { name: 'Pobierz wideo i opis' }),
+  );
+  expect(screen.getByText('Pobieram wideo z TikTok…')).toBeTruthy();
+  await act(() => vi.advanceTimersByTimeAsync(2000));
+  expect(screen.getByText('Wykryto: TikTok')).toBeTruthy();
 });

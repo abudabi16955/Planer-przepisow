@@ -34,8 +34,8 @@ def finish(client, job_id):
     return response.json()
 
 
-def imported(client):
-    response = client.post("/api/imports", json={"url": URL})
+def imported(client, url=URL):
+    response = client.post("/api/imports", json={"url": url})
     assert response.status_code == 202
     return finish(client, response.json()["id"])
 
@@ -88,6 +88,11 @@ def test_rejects_unsafe_urls_without_queueing(client, url):
         ("www.facebook.com", "facebook"),
         ("m.facebook.com", "facebook"),
         ("fb.watch", "facebook"),
+        ("tiktok.com", "tiktok"),
+        ("www.tiktok.com", "tiktok"),
+        ("m.tiktok.com", "tiktok"),
+        ("vm.tiktok.com", "tiktok"),
+        ("vt.tiktok.com", "tiktok"),
     ],
 )
 def test_allowed_hosts(host, platform):
@@ -130,6 +135,18 @@ def test_fake_job_attaches_video_and_plain_description(client):
     assert client.post("/api/recipes", json=payload(job)).status_code == 422
     assert client.delete("/api/recipes/" + recipe["id"]).status_code == 204
     assert not storage.path(recipe["video"]["path"]).exists()
+
+
+def test_fake_job_tiktok_recipe(client):
+    url = "https://www.tiktok.com/@user/video/123456789"
+    job = imported(client, url=url)
+    assert job["status"] == "done"
+    assert job["platform"] == "tiktok"
+    response = client.post("/api/recipes", json=payload(job))
+    assert response.status_code == 201, response.text
+    recipe = response.json()
+    assert recipe["source_url"] == url
+    assert recipe["source_platform"] == "tiktok"
 
 
 @pytest.mark.parametrize(
@@ -416,9 +433,22 @@ def test_ytdlp_format_selection_preferences():
     case2 = [dict(f) for f in (f_av01, f_audio)]
     assert [f["format_id"] for f in ydl._select_formats(case2, selector)] == ["720p_av01+audio"]
 
-    # 3. h264 720x1280 znany -> h264 (nawet gdy jest hd z unknown i av01)
-    case3 = [dict(f) for f in (f_h264, f_audio, f_av01, f_hd_unknown)]
+    f_bytevc1 = {
+        "format_id": "720p_bytevc1",
+        "vcodec": "bytevc1",
+        "acodec": "none",
+        "width": 720,
+        "height": 1280,
+        "ext": "mp4",
+        "url": "https://example.com/bytevc1.mp4",
+    }
+    # 3. h264 720x1280 znany -> h264 (nawet gdy jest hd z unknown, av01 i bytevc1)
+    case3 = [dict(f) for f in (f_h264, f_audio, f_av01, f_bytevc1, f_hd_unknown)]
     assert [f["format_id"] for f in ydl._select_formats(case3, selector)] == ["720p_h264+audio"]
+
+    # 4. bytevc1 fallback gdy brak h264/unknown
+    case4 = [dict(f) for f in (f_bytevc1, f_audio)]
+    assert [f["format_id"] for f in ydl._select_formats(case4, selector)] == ["720p_bytevc1+audio"]
 
 
 def test_ytdlp_format_selection_picks_lower_variant_when_no_h264():

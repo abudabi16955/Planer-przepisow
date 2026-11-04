@@ -14,7 +14,11 @@ from app.importers.base import ImportError, ImportResult, Limits, platform_for_u
 logger = logging.getLogger(__name__)
 
 DEFAULT_FORMAT_SELECTOR = (
-    "bestvideo*[vcodec!*=av01][vcodec!*=av1][vcodec!=unknown][height<=1080]+bestaudio"
+    "bestvideo*[vcodec!*=av01][vcodec!*=av1][vcodec!*=bytevc1][vcodec!*=hevc][vcodec!*=hvc1][vcodec!*=hev1][vcodec!*=h265][vcodec!=unknown][height<=1080]+bestaudio"
+    "/bestvideo*[vcodec!*=av01][vcodec!*=av1][vcodec!*=bytevc1][vcodec!*=hevc][vcodec!*=hvc1][vcodec!*=hev1][vcodec!*=h265][vcodec!=unknown][width<=1080]+bestaudio"
+    "/best[vcodec!*=av01][vcodec!*=av1][vcodec!*=bytevc1][vcodec!*=hevc][vcodec!*=hvc1][vcodec!*=hev1][vcodec!*=h265][vcodec!=unknown][height<=1080]"
+    "/best[vcodec!*=av01][vcodec!*=av1][vcodec!*=bytevc1][vcodec!*=hevc][vcodec!*=hvc1][vcodec!*=hev1][vcodec!*=h265][vcodec!=unknown][width<=1080]"
+    "/bestvideo*[vcodec!*=av01][vcodec!*=av1][vcodec!=unknown][height<=1080]+bestaudio"
     "/bestvideo*[vcodec!*=av01][vcodec!*=av1][vcodec!=unknown][width<=1080]+bestaudio"
     "/best[vcodec!*=av01][vcodec!*=av1][vcodec!=unknown][height<=1080]"
     "/best[vcodec!*=av01][vcodec!*=av1][vcodec!=unknown][width<=1080]"
@@ -32,7 +36,7 @@ class YtDlpImporter:
     def fetch(self, url: str, workdir: Path, limits: Limits) -> ImportResult:
         platform = platform_for_url(url)
         deadline = time.monotonic() + limits.timeout_s
-        if urlsplit(url).hostname == "fb.watch":
+        if urlsplit(url).hostname in ("fb.watch", "vm.tiktok.com", "vt.tiktok.com"):
             try:
                 redirect = subprocess.run(
                     [sys.executable, "-m", "app.importers.redirect", url, str(limits.timeout_s)],
@@ -63,7 +67,7 @@ class YtDlpImporter:
             "--playlist-items",
             "1",
             "--use-extractors",
-            "Instagram.*,Facebook.*",
+            "Instagram.*,Facebook.*,TikTok",
             "--no-progress",
             "--no-warnings",
             "--no-overwrites",
