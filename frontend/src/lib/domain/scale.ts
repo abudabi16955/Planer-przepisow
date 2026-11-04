@@ -1,10 +1,13 @@
 import { formatQuantity } from './format';
 
-/** Counter limits apply to displayed servings, not the recipe's base (1–50). */
+export const MIN_SERVINGS = 1;
+export const MAX_SERVINGS = 50;
+
+/** Counter limits apply to displayed servings, matching the recipe's base range (1–50). */
 export function clampServings(servings: number): number {
   if (!Number.isInteger(servings))
     throw new RangeError('Porcje muszą być całkowite');
-  return Math.max(1, Math.min(12, servings));
+  return Math.max(MIN_SERVINGS, Math.min(MAX_SERVINGS, servings));
 }
 
 export function scaleQuantity(
@@ -14,13 +17,17 @@ export function scaleQuantity(
 ): number | null {
   if (
     !Number.isInteger(baseServings) ||
-    baseServings < 1 ||
-    baseServings > 50
+    baseServings < MIN_SERVINGS ||
+    baseServings > MAX_SERVINGS
   ) {
-    throw new RangeError('Porcje bazowe muszą być w zakresie 1–50');
+    throw new RangeError(
+      `Porcje bazowe muszą być w zakresie ${MIN_SERVINGS}–${MAX_SERVINGS}`,
+    );
   }
   if (clampServings(servings) !== servings)
-    throw new RangeError('Porcje muszą być w zakresie 1–12');
+    throw new RangeError(
+      `Porcje muszą być w zakresie ${MIN_SERVINGS}–${MAX_SERVINGS}`,
+    );
   return quantity === null ? null : (quantity * servings) / baseServings;
 }
 

@@ -48,33 +48,54 @@ test('skaluje ilości w UI, do smaku bez zmian; makro nadal na 1 porcję', async
   ).toBeTruthy();
 });
 
-test('licznik zatrzymuje się na 1 i 12', async () => {
-  show();
-  await fireEvent.click(screen.getByRole('button', { name: 'Mniej porcji' }));
+test('przepis z 14 porcjami: start 14, ilości równe zapisanym, przycisk + i - aktywne', () => {
+  show({ ...detailRecipe, servings: 14 });
+  expect(screen.getByLabelText('Liczba porcji').textContent).toBe('14');
+  expect(
+    screen.getByRole('button', { name: 'Mąka pszenna, 100 g' }),
+  ).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'Więcej porcji' })).toHaveProperty(
+    'disabled',
+    false,
+  );
   expect(screen.getByRole('button', { name: 'Mniej porcji' })).toHaveProperty(
     'disabled',
-    true,
+    false,
   );
-  expect(
-    screen.getByRole('button', { name: 'Mąka pszenna, 50 g' }),
-  ).toBeTruthy();
+});
+
+test('przepis z 2 porcjami pozwala zwiększać licznik powyżej 12', async () => {
+  show({ ...detailRecipe, servings: 2 });
   for (let i = 0; i < 11; i++)
     await fireEvent.click(
       screen.getByRole('button', { name: 'Więcej porcji' }),
     );
-  expect(screen.getByLabelText('Liczba porcji').textContent).toBe('12');
+  expect(screen.getByLabelText('Liczba porcji').textContent).toBe('13');
+  expect(screen.getByRole('button', { name: 'Więcej porcji' })).toHaveProperty(
+    'disabled',
+    false,
+  );
+});
+
+test('licznik zatrzymuje się na 1 oraz na 50 z wyłączonym przyciskiem +', async () => {
+  const view1 = show({ ...detailRecipe, servings: 1 });
+  expect(screen.getByRole('button', { name: 'Mniej porcji' })).toHaveProperty(
+    'disabled',
+    true,
+  );
+  view1.unmount();
+
+  const view50 = show({ ...detailRecipe, servings: 50 });
+  expect(screen.getByLabelText('Liczba porcji').textContent).toBe('50');
   expect(screen.getByRole('button', { name: 'Więcej porcji' })).toHaveProperty(
     'disabled',
     true,
   );
-});
-
-test('bazę większą niż 12 ogranicza w liczniku, zachowuje poprawny przelicznik', () => {
-  show({ ...detailRecipe, servings: 50 });
-  expect(screen.getByLabelText('Liczba porcji').textContent).toBe('12');
-  expect(
-    screen.getByRole('button', { name: 'Mąka pszenna, 24 g' }),
-  ).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'Mniej porcji' })).toHaveProperty(
+    'disabled',
+    false,
+  );
+  view50.unmount();
 });
 
 test('odhaczanie jest lokalne, przetrwa zmianę zakładki i resetuje się po ponownym otwarciu', async () => {
