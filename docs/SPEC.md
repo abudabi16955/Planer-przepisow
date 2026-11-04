@@ -49,7 +49,7 @@ Adresy (URL) ekranów: `/` (przepisy), `/przepis/:id`, `/dodaj`, `/planer`, `/za
 - Laptop: kliknięcie karty zaznacza ją (zielona obwódka 2 px) i pokazuje szczegóły w panelu.
 
 ### 3.2 Szczegóły przepisu (T:86, L:106)
-- Góra: zdjęcie / okładka wideo / placeholder (telefon 250 px z przyciskiem „Wróć”; laptop 180 px).
+- Góra: zdjęcie / okładka wideo / placeholder (telefon 250 px z przyciskiem „Wróć”; laptop 204 px; na obu szerokościach karta treści nachodzi na pas o 24 px z zaokrąglonymi górnymi rogami 24 px, widoczna wysokość pasa na laptopie: 180 px).
 - Plakietki: kategoria, „⏱ 25 min”, „Źródło: Instagram|Facebook|TikTok|PDF|WWW|Ręcznie”.
 - Tytuł.
 - Karta makro „na 1 porcję”: duża liczba kcal, pasek proporcji energii (białko #14201A, węglowodany #3F8F68, tłuszcze #A9D1BB), trzy wartości w gramach.
