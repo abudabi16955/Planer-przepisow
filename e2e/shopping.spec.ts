@@ -39,10 +39,16 @@ test('planer → lista zakupów: dni, odhaczanie, trwałość i zmiana planu', a
     await expect(page.getByText('W wybranych dniach nie ma zaplanowanych posiłków.', { exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Cały tydzień', exact: true }).click();
     await expect(eggRow).toHaveAttribute('aria-pressed', 'true');
-    await page.getByRole('button', { name: 'Następny tydzień' }).click();
+    const nextWeek = page.getByRole('button', { name: 'Następny tydzień' });
+    const prevWeek = page.getByRole('button', { name: 'Poprzedni tydzień' });
+    await expect(nextWeek).toHaveCSS('justify-content', 'center');
+    await expect(nextWeek).toHaveCSS('align-items', 'center');
+    await expect(prevWeek).toHaveCSS('justify-content', 'center');
+    await expect(prevWeek).toHaveCSS('align-items', 'center');
+    await nextWeek.click();
     await expect(page.getByText('W wybranych dniach nie ma zaplanowanych posiłków.', { exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Od dziś', exact: true })).toBeDisabled();
-    await page.getByRole('button', { name: 'Poprzedni tydzień' }).click();
+    await prevWeek.click();
     await expect(eggRow).toHaveAttribute('aria-pressed', 'true');
     if (desktop) {
       await page.getByRole('navigation').getByRole('button', { name: 'Planer', exact: true }).click();
