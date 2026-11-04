@@ -5,9 +5,11 @@ test('lista → szczegóły z prawdziwym API: skalowanie, odhaczanie i zakładki
   const response = await request.get('http://127.0.0.1:8000/api/products');
   const catalogue = await response.json();
   const eggs = catalogue.find((product: { name: string }) => product.name === 'Jajka');
+  const others = catalogue.filter((p: { id: string }) => p.id !== eggs.id).slice(0, 14);
   const created = await request.post('http://127.0.0.1:8000/api/recipes', { data: {
     title: `Test szczegółów ${testInfo.project.name} ${Date.now()}`, category: 'sniadanie', servings: 2, source_type: 'manual',
-    ingredients: [{ product_id: eggs.id, quantity: 2, unit: 'szt.' }], steps: ['Wymieszaj.', 'Usmaż.'],
+    ingredients: [{ product_id: eggs.id, quantity: 2, unit: 'szt.' }, ...others.map((p: { id: string, units: string[] }) => ({ product_id: p.id, quantity: 50, unit: p.units[0] }))],
+    steps: ['Wymieszaj.', 'Usmaż.'],
   } });
   expect(created.status()).toBe(201);
   const recipe = await created.json();
@@ -22,6 +24,15 @@ test('lista → szczegóły z prawdziwym API: skalowanie, odhaczanie i zakładki
       expect((await panel.boundingBox())?.width).toBe(480);
       await expect(card).toHaveAttribute('aria-pressed', 'true');
       await expect(page.getByRole('heading', { name: 'Przepisy', exact: true })).toBeVisible();
+      const hero = details.locator('.hero');
+      const body = details.locator('.body');
+      const heroBox = await hero.boundingBox();
+      const bodyBox = await body.boundingBox();
+      expect(heroBox?.height).toBe(204);
+      expect(heroBox && bodyBox && heroBox.y + heroBox.height - bodyBox.y).toBe(24);
+      await expect(body).toHaveCSS('border-top-left-radius', '24px');
+      await expect(body).toHaveCSS('border-top-right-radius', '24px');
+      await expect(body).toHaveCSS('overflow-y', 'auto');
     } else {
       await expect(page).toHaveURL(new RegExp(`/przepis/${recipe.id}$`));
       await expect(page.getByRole('navigation')).toHaveCount(0);
@@ -32,6 +43,13 @@ test('lista → szczegóły z prawdziwym API: skalowanie, odhaczanie i zakładki
     const ingredient = details.getByRole('button', { name: 'Jajka, 3 szt.' });
     await ingredient.click();
     await expect(ingredient).toHaveAttribute('aria-pressed', 'true');
+    const lastIngredient = details.getByRole('button', { name: new RegExp(others[others.length - 1].name) });
+    await lastIngredient.scrollIntoViewIfNeeded();
+    await expect(lastIngredient).toBeVisible();
+    if (desktop) {
+      const body = details.locator('.body');
+      expect(await body.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
+    }
     await details.getByRole('tab', { name: 'Przygotowanie' }).click();
     await expect(details.getByText('Usmaż.', { exact: true })).toBeVisible();
     await details.getByRole('tab', { name: 'Źródło' }).click();

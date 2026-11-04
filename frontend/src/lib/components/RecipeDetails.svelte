@@ -962,16 +962,16 @@
     margin-bottom: 0;
   }
   .desktop .hero {
-    height: 180px;
+    height: 204px;
   }
   .desktop .plate {
     width: 130px;
     height: 130px;
   }
   .desktop .body {
-    margin-top: 0;
+    margin-top: -24px;
     padding: 20px 24px 24px;
-    border-radius: 0;
+    border-radius: 24px 24px 0 0;
   }
   .desktop .kcal {
     font-size: 34px;
