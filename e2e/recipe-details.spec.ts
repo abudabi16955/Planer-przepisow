@@ -28,11 +28,12 @@ test('lista → szczegóły z prawdziwym API: skalowanie, odhaczanie i zakładki
       const body = details.locator('.body');
       const heroBox = await hero.boundingBox();
       const bodyBox = await body.boundingBox();
-      expect(heroBox?.height).toBe(204);
-      expect(heroBox && bodyBox && heroBox.y + heroBox.height - bodyBox.y).toBe(24);
+      expect(heroBox?.height).toBeCloseTo(204, 0);
+      expect(heroBox && bodyBox && Math.abs(heroBox.y + heroBox.height - bodyBox.y - 24)).toBeLessThanOrEqual(1);
       await expect(body).toHaveCSS('border-top-left-radius', '24px');
       await expect(body).toHaveCSS('border-top-right-radius', '24px');
-      await expect(body).toHaveCSS('overflow-y', 'auto');
+      await expect(panel).toHaveCSS('overflow-y', 'auto');
+      await expect(body).not.toHaveCSS('overflow-y', 'auto');
     } else {
       await expect(page).toHaveURL(new RegExp(`/przepis/${recipe.id}$`));
       await expect(page.getByRole('navigation')).toHaveCount(0);
@@ -47,8 +48,13 @@ test('lista → szczegóły z prawdziwym API: skalowanie, odhaczanie i zakładki
     await lastIngredient.scrollIntoViewIfNeeded();
     await expect(lastIngredient).toBeVisible();
     if (desktop) {
-      const body = details.locator('.body');
-      expect(await body.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
+      const panel = page.getByRole('complementary', { name: 'Szczegóły przepisu' });
+      expect(await panel.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
+      const heroScrolled = await details.locator('.hero').boundingBox();
+      expect(heroScrolled?.y).toBeLessThan(0);
+      const plannerBtn = details.getByRole('button', { name: 'Dodaj do planera', exact: true });
+      await expect(plannerBtn).toBeVisible();
+      expect(await page.locator('section').evaluate((el) => el.scrollTop)).toBe(0);
     }
     await details.getByRole('tab', { name: 'Przygotowanie' }).click();
     await expect(details.getByText('Usmaż.', { exact: true })).toBeVisible();

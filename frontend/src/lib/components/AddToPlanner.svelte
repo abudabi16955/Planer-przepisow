@@ -198,9 +198,13 @@
     color: var(--text);
   }
   .desktop.action {
-    position: static;
+    position: sticky;
+    bottom: 0;
     flex: none;
     padding: 12px 24px 20px;
+    background: var(--background);
+    border-top: 1px solid var(--border);
+    z-index: 2;
   }
   .panel {
     margin-bottom: 12px;
