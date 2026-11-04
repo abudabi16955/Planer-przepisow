@@ -114,7 +114,7 @@ Adresy (URL) ekranów: `/` (przepisy), `/przepis/:id`, `/dodaj`, `/planer`, `/za
 - Postęp: „Kupione: 3 z 24” + pasek.
 - Lista pozycji (telefon 1 kolumna, laptop 2 kolumny): okrąg/✓, nazwa, ilość; klik odhacza (przekreślenie). Stan odhaczenia zapisywany trwale per tydzień.
 - Puste stany: „Wybierz co najmniej jeden dzień.” / „W wybranych dniach nie ma zaplanowanych posiłków.”
-- Podpis z zasadami: „Ilości są zsumowane ze wszystkich zaplanowanych posiłków, po 1 porcji każdy. Sztuki zaokrąglone w górę. Ten sam produkt w różnych jednostkach jest w osobnych wierszach.”.
+- Podpis z zasadami: „Ilości są zsumowane ze wszystkich wybranych posiłków, po całym przepisie każdy. Sztuki zaokrąglone w górę. Ten sam produkt w różnych jednostkach jest w osobnych wierszach.”.
 - Laptop: dostęp też z paska bocznego; przycisk w planerze nieaktywny przy pustym planie.
 
 ### 3.6 Wybór składnika i nowy produkt (T:389, T:746, L:555)
@@ -168,7 +168,7 @@ Jeden rekord: `kcal`, `protein`, `carbs`, `fat` (liczby ≥ 0; 0 = brak celu).
    c) brak jakichkolwiek danych → przepis „bez wartości” (wyświetlamy „—” zamiast kcal, pasek makro pusty, w linii karty tylko „25 min”).
 2. **Proporcje energii**: B% = round(4B/E·100), W% = round(4W/E·100), T% = 100 − B% − W%, gdzie E = 4B + 4W + 9T.
 3. **Skalowanie porcji**: ilość × porcje / porcje bazowe; zakres licznika 1–50.
-4. **Lista zakupów**: dla każdego wpisu planera w wybranych dniach i każdego składnika: ilość / porcje bazowe (czyli 1 porcja na posiłek). Grupowanie po (produkt, jednostka); bez przeliczania jednostek. „szt.” → zaokrąglenie w górę (z tolerancją 0,0001); pozostałe wg p. 4. „Do smaku” — jeden wiersz na produkt z ilością „do smaku”. Sortowanie alfabetyczne wg polskiej kolacji.
+4. **Lista zakupów**: dla każdego wpisu planera w wybranych dniach i każdego składnika: ilość z przepisu (cały przepis, bez dzielenia przez porcje bazowe). Grupowanie po (produkt, jednostka); bez przeliczania jednostek. „szt.” → zaokrąglenie w górę (z tolerancją 0,0001); pozostałe wg p. 4. „Do smaku” — jeden wiersz na produkt z ilością „do smaku”. Sortowanie alfabetyczne wg polskiej kolacji.
 5. **Licznik posiłków**: „X z 21 posiłków” = liczba zajętych slotów w tygodniu.
 6. **Dziś** i **tydzień** liczone w strefie czasowej aplikacji (domyślnie Europe/Warsaw); tydzień = poniedziałek–niedziela.
 
@@ -200,7 +200,7 @@ Jeden rekord: `kcal`, `protein`, `carbs`, `fat` (liczby ≥ 0; 0 = brak celu).
 | Przepis bez składników / kroków | Dozwolony; zakładki pokazują puste listy. |
 | Ilość ułamkowa szt. (np. 0,5 cebuli) | W przepisie „0,5 szt.”; na liście zakupów zaokrąglone w górę do 1 szt. |
 | Ten sam produkt w różnych jednostkach | Osobne wiersze na liście zakupów. |
-| Ten sam przepis kilka razy w tygodniu | Każde wystąpienie dolicza 1 porcję. |
+| Ten sam przepis kilka razy w tygodniu | Każde wystąpienie dolicza cały przepis (na liście zakupów) lub 1 porcję (w podsumowaniu dnia w planerze). |
 | Dodanie do zajętego slotu | Zastępuje poprzedni przepis (notka „Zastąpi: …”). |
 | Cel = 0 lub puste pole celu | „brak celu”, pasek 0%, komunikat „Ustaw cel w „Zmień cel””. |
 | Ujemne / nienumeryczne wartości w polach liczbowych | Traktowane jak puste (0); walidacja po stronie serwera odrzuca wartości < 0. |

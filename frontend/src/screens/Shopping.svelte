@@ -194,9 +194,9 @@
             <span style:width={`${(purchased / items.length) * 100}%`}></span>
           </div>
           {#if desktop}<p class="rules">
-              Ilości są zsumowane ze wszystkich wybranych posiłków, po 1 porcji
-              każdy. Sztuki zaokrąglone w górę. Ten sam produkt w różnych
-              jednostkach jest w osobnych wierszach.
+              Ilości są zsumowane ze wszystkich wybranych posiłków, po całym
+              przepisie każdy. Sztuki zaokrąglone w górę. Ten sam produkt w
+              różnych jednostkach jest w osobnych wierszach.
             </p>{/if}
         </div>
       {/if}
@@ -228,9 +228,9 @@
             {/each}
           </div>
           {#if !desktop}<p class="rules">
-              Ilości są zsumowane ze wszystkich zaplanowanych posiłków, po 1
-              porcji każdy. Sztuki zaokrąglone w górę. Ten sam produkt w różnych
-              jednostkach jest w osobnych wierszach.
+              Ilości są zsumowane ze wszystkich wybranych posiłków, po całym
+              przepisie każdy. Sztuki zaokrąglone w górę. Ten sam produkt w
+              różnych jednostkach jest w osobnych wierszach.
             </p>{/if}
         {/if}
       {/if}
