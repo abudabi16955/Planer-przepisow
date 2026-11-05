@@ -34,14 +34,39 @@ test('pusta baza, zamknięcie i Escape', async () => {
   );
   expect(onclose).toHaveBeenCalledTimes(2);
 });
-test('sortuje najnowsze, prezentuje metadane i notkę zastąpienia', () => {
+test('sortuje najnowsze, prezentuje metadane, porcje i notkę zastąpienia', () => {
   render(RecipePicker, { ...props, desktop: true, replacedTitle: 'Zupa' });
   expect(screen.getByText('Zastąpi: Zupa')).toBeTruthy();
   const choices = screen.getAllByRole('button', { name: /Wybierz:/ });
   expect(choices[0].getAttribute('aria-label')).toBe(
     `Wybierz: ${recipes[1].title}`,
   );
-  expect(screen.getByText('330 kcal · 10 min')).toBeTruthy();
+  expect(screen.getByText('330 kcal · 25 min · 2 porcje')).toBeTruthy();
+  expect(screen.getByText('15 min · 2 porcje')).toBeTruthy();
+  expect(screen.getByText('2 porcje')).toBeTruthy();
+  expect(screen.getByText('330 kcal · 10 min · 2 porcje')).toBeTruthy();
+});
+
+test('prezentuje różne odmiany porcji w liście wyborów', () => {
+  const single = {
+    ...recipes[0],
+    id: 'single',
+    title: 'Jeden',
+    servings: 1,
+    time_min: 60,
+    kcal: 241,
+  };
+  const multiple = {
+    ...recipes[0],
+    id: 'multiple',
+    title: 'Sześć',
+    servings: 6,
+    time_min: 60,
+    kcal: 241,
+  };
+  render(RecipePicker, { ...props, recipes: [single, multiple] });
+  expect(screen.getByText('241 kcal · 60 min · 1 porcja')).toBeTruthy();
+  expect(screen.getByText('241 kcal · 60 min · 6 porcji')).toBeTruthy();
 });
 test('blokuje ponowny zapis i zamykanie podczas żądania', async () => {
   let finish!: () => void;

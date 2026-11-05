@@ -2,7 +2,7 @@
   import { ApiError, type Recipe } from '../api';
   import type { Product } from '../domain/nutrition';
   import { recipeMeta } from '../recipeCards';
-  import { formatDayHeading } from '../domain/format';
+  import { formatDayHeading, formatServings } from '../domain/format';
   import { modalFocus } from '../modal';
   import RecipeThumbnail from './RecipeThumbnail.svelte';
   let {
@@ -91,7 +91,12 @@
           onclick={() => choose(recipe)}
           ><RecipeThumbnail {recipe} /><span
             ><strong>{recipe.title}</strong><small
-              >{recipeMeta(recipe, products)}</small
+              >{[
+                recipeMeta(recipe, products),
+                recipe.servings ? formatServings(recipe.servings) : null,
+              ]
+                .filter(Boolean)
+                .join(' · ')}</small
             ></span
           ></button
         >{/each}

@@ -55,6 +55,11 @@ export function formatRecipeCount(count: number): string {
   return `${formatNumber(count)} ${labels[pluralIndex(count)] ?? 'przepisu'}`;
 }
 
+export function formatServings(count: number): string {
+  const labels = ['porcja', 'porcje', 'porcji'];
+  return `${formatNumber(count)} ${labels[pluralIndex(count)] ?? 'porcji'}`;
+}
+
 /** File sizes use 1024 bytes per KB and 1024 KB per MB. */
 export function formatFileSize(bytes: number): string {
   if (bytes < 1024 ** 2) return `${formatNumber(Math.round(bytes / 1024))} KB`;
