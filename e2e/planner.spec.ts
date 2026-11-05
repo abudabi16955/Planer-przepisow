@@ -39,7 +39,7 @@ test('planer: dodawanie, zastępowanie, trwałość, zakupy, szczegóły i usuwa
     await expect(pickerClose).toHaveCSS('justify-content','center');
     await expect(pickerClose).toHaveCSS('align-items','center');
     await expect(picker.getByText('Wtorek · Obiad')).toBeVisible();
-    await expect(picker.getByText('330 kcal · 25 min · 2 porcje')).toBeVisible();
+    await expect(picker.getByRole('button',{name:`Wybierz: ${saved[0].title}`,exact:true}).getByText('330 kcal · 25 min · 2 porcje')).toBeVisible();
     const choices=picker.getByRole('button',{name:/^Wybierz:/});
     const first=await choices.nth(0).boundingBox();
     const second=await choices.nth(1).boundingBox();
